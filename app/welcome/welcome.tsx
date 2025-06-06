@@ -1,5 +1,4 @@
-import logoDark from "./logo-dark.svg";
-import logoLight from "./logo-light.svg";
+import logoLight from "./luna-sites-high-resolution-logo.svg.svg";
 
 export function Welcome() {
   return (
@@ -9,13 +8,8 @@ export function Welcome() {
           <div className="w-[500px] max-w-[100vw] p-4">
             <img
               src={logoLight}
-              alt="React Router"
-              className="block w-full dark:hidden"
-            />
-            <img
-              src={logoDark}
-              alt="React Router"
-              className="hidden w-full dark:block"
+              alt="Luna Sites"
+              className="block w-full"
             />
           </div>
         </header>
@@ -28,7 +22,7 @@ export function Welcome() {
               {resources.map(({ href, text, icon }) => (
                 <li key={href}>
                   <a
-                    className="group flex items-center gap-3 self-stretch p-3 leading-normal text-blue-700 hover:underline dark:text-blue-500"
+                    className="group flex items-center gap-3 self-stretch p-3 leading-normal text-[#0052de] hover:underline dark:text-blue-400"
                     href={href}
                     target="_blank"
                     rel="noreferrer"

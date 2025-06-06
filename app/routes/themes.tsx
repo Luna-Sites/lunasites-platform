@@ -67,14 +67,14 @@ export default function Themes() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <a href="/" className="text-2xl font-bold text-indigo-600">Luna Sites</a>
+              <a href="/" className="text-2xl font-bold text-[#0052de]">Luna Sites</a>
             </div>
             <div className="hidden md:block">
               <div className="ml-10 flex items-baseline space-x-4">
-                <a href="/" className="text-gray-500 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Home</a>
-                <a href="/themes" className="text-gray-900 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Themes</a>
-                <a href="#" className="text-gray-500 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium">Pricing</a>
-                <button className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700">
+                <a href="/" className="text-gray-500 hover:text-[#0052de] px-3 py-2 rounded-md text-sm font-medium">Home</a>
+                <a href="/themes" className="text-gray-900 hover:text-[#0052de] px-3 py-2 rounded-md text-sm font-medium">Themes</a>
+                <a href="#" className="text-gray-500 hover:text-[#0052de] px-3 py-2 rounded-md text-sm font-medium">Pricing</a>
+                <button className="bg-[#0052de] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
                   Start Free
                 </button>
               </div>
@@ -99,7 +99,7 @@ export default function Themes() {
               {categories.map((category) => (
                 <button
                   key={category}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#0052de] focus:border-[#0052de]"
                 >
                   {category}
                 </button>
@@ -120,7 +120,7 @@ export default function Themes() {
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-xl font-semibold text-gray-900">{theme.name}</h3>
-                    <span className="px-2 py-1 text-xs font-medium text-indigo-600 bg-indigo-100 rounded-full">
+                    <span className="px-2 py-1 text-xs font-medium text-[#0052de] bg-blue-100 rounded-full">
                       {theme.category}
                     </span>
                   </div>
@@ -139,10 +139,10 @@ export default function Themes() {
                     </ul>
                   </div>
                   <div className="flex space-x-3">
-                    <button className="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700">
+                    <button className="flex-1 bg-[#0052de] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
                       Preview
                     </button>
-                    <button className="flex-1 border border-indigo-600 text-indigo-600 px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-50">
+                    <button className="flex-1 border border-[#0052de] text-[#0052de] px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-50">
                       Use Theme
                     </button>
                   </div>
@@ -157,7 +157,7 @@ export default function Themes() {
               We have over 500 themes available. Explore the entire collection or contact us for personalized suggestions.
             </p>
             <div className="flex justify-center space-x-4">
-              <button className="bg-indigo-600 text-white px-6 py-3 rounded-md font-medium hover:bg-indigo-700">
+              <button className="bg-[#0052de] text-white px-6 py-3 rounded-md font-medium hover:bg-blue-700">
                 View All Themes
               </button>
               <button className="border border-gray-300 text-gray-700 px-6 py-3 rounded-md font-medium hover:bg-gray-50">
