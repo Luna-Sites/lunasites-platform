@@ -1,5 +1,5 @@
 import type { Route } from "./+types/home";
-
+import Logo from "../welcome/logo_mini.png";
 export function meta({}: Route.MetaArgs) {
   return [
     { title: "Luna Sites - Build Your Dream Website" },
@@ -18,11 +18,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-3">
-              <img
-                src="/app/welcome/logo_mini.png"
-                alt="Luna Sites"
-                className="w-10 h-10"
-              />
+              <img src={Logo} alt="Luna Sites" className="w-10 h-10" />
               <h1 className="text-4xl font-bold bg-gradient-to-r from-[#0052de] to-blue-700 bg-clip-text text-transparent">
                 Luna Sites
               </h1>
