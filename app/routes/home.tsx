@@ -49,9 +49,9 @@ export default function Home() {
                 >
                   Pricing
                 </a>
-                <button className="bg-gradient-to-r from-[#0052de] to-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium hover:from-blue-800 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl">
+                <a href="/builder" className="bg-gradient-to-r from-[#0052de] to-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium hover:from-blue-800 hover:to-blue-800 transition-all duration-200 shadow-lg hover:shadow-xl">
                   Start Free
-                </button>
+                </a>
               </div>
             </div>
           </div>
@@ -93,10 +93,10 @@ export default function Home() {
 
               <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center items-center">
                 <a
-                  href="/themes"
+                  href="/builder"
                   className="group inline-flex items-center px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-[#0052de] to-blue-700 rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-300 shadow-lg hover:shadow-2xl transform hover:-translate-y-1"
                 >
-                  <span>Explore Themes</span>
+                  <span>Start Building</span>
                   <svg
                     className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform"
                     fill="none"
@@ -566,7 +566,7 @@ export default function Home() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
               <a
-                href="/themes"
+                href="/builder"
                 className="inline-flex items-center px-8 py-4 text-lg font-bold text-[#0052de] bg-white rounded-xl hover:bg-gray-100 transition-all duration-300 shadow-xl hover:shadow-2xl transform hover:-translate-y-1"
               >
                 <span>Start Free Now</span>

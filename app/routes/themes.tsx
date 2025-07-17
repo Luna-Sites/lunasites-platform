@@ -74,9 +74,9 @@ export default function Themes() {
                 <a href="/" className="text-gray-500 hover:text-[#0052de] px-3 py-2 rounded-md text-sm font-medium">Home</a>
                 <a href="/themes" className="text-gray-900 hover:text-[#0052de] px-3 py-2 rounded-md text-sm font-medium">Themes</a>
                 <a href="#" className="text-gray-500 hover:text-[#0052de] px-3 py-2 rounded-md text-sm font-medium">Pricing</a>
-                <button className="bg-[#0052de] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
+                <a href="/builder" className="bg-[#0052de] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
                   Start Free
-                </button>
+                </a>
               </div>
             </div>
           </div>
@@ -142,9 +142,9 @@ export default function Themes() {
                     <button className="flex-1 bg-[#0052de] text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700">
                       Preview
                     </button>
-                    <button className="flex-1 border border-[#0052de] text-[#0052de] px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-50">
+                    <a href="/builder" className="flex-1 border border-[#0052de] text-[#0052de] px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-50 text-center">
                       Use Theme
-                    </button>
+                    </a>
                   </div>
                 </div>
               </div>
