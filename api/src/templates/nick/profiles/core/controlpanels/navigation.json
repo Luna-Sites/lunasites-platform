@@ -1,0 +1,44 @@
+{
+  "id": "navigation",
+  "title:i18n": "Navigation",
+  "group": "General",
+  "schema": {
+    "fieldsets": [
+      {
+        "fields": ["displayed_types", "additional_items"],
+        "id": "general",
+        "title": "General"
+      }
+    ],
+    "properties": {
+      "displayed_types": {
+        "additionalItems": true,
+        "default": ["Folder", "Page"],
+        "description:i18n": "The content types that should be shown in the navigation and site map.",
+        "items": {
+          "description": "",
+          "factory": "Choice",
+          "title": "",
+          "type": "string",
+          "vocabulary": {
+            "@id": "types"
+          }
+        },
+        "title:i18n": "Displayed content types",
+        "type": "array",
+        "uniqueItems": true
+      },
+      "additional_items": {
+        "title:i18n": "Additional items",
+        "description:i18n": "Add additional items to the navigation, one per line. In the format 'title|description|url'.",
+        "type": "string",
+        "widget": "textarea"
+      }
+    },
+    "required": ["displayed_types"]
+  },
+  "data": {
+    "displayed_types": ["Folder", "Page"],
+    "additional_items": ""
+  }
+}

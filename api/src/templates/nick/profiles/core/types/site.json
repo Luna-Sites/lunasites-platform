@@ -1,0 +1,20 @@
+{
+  "id": "Site",
+  "title:i18n": "Site",
+  "description": "",
+  "global_allow": false,
+  "filter_content_types": false,
+  "allowed_content_types": [],
+  "schema": {
+    "behaviors": [
+      "dublin_core",
+      "dates",
+      "blocks",
+      "versioning",
+      "folderish",
+      "navigation_root"
+    ],
+    "layouts": []
+  },
+  "workflow": "simple_publication_workflow"
+}

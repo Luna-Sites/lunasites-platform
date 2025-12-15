@@ -1,0 +1,28 @@
+{
+  "id": "preview_image_link",
+  "title:i18n": "Preview Image Link",
+  "description:i18n": "Gives the ability to rename an item from its edit form.",
+  "schema": {
+    "fieldsets": [
+      {
+        "fields": ["preview_image_link", "preview_caption_link"],
+        "id": "default",
+        "title:i18n": "Default"
+      }
+    ],
+    "properties": {
+      "preview_image_link": {
+        "title:i18n": "Preview image",
+        "description:i18n": "Select an image that will be used in listing and teaser blocks.",
+        "widget": "object_browser",
+        "factory": "Relation Choice",
+        "mode": "image"
+      },
+      "preview_caption_link": {
+        "description": "",
+        "title:i18n": "Preview image caption",
+        "type": "string"
+      }
+    }
+  }
+}

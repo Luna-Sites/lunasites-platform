@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { api, type Site, handleApiError } from '../lib/api';
 
@@ -14,9 +14,18 @@ export default function SitesDashboard() {
     }
   }, [user]);
 
+  // Auto-refresh for deploying sites
+  useEffect(() => {
+    const hasDeploying = sites.some((s: Site) => s.status === 'pending' || s.status === 'deploying');
+    if (hasDeploying) {
+      const interval = setInterval(loadSites, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [sites]);
+
   const loadSites = async () => {
     if (!user) return;
-    
+
     setLoading(true);
     setError(null);
     try {
@@ -33,7 +42,7 @@ export default function SitesDashboard() {
 
   const handleDeleteSite = async (siteId: string) => {
     if (!window.confirm('Are you sure you want to delete this site? This action cannot be undone.')) return;
-    
+
     try {
       await api.deleteSite(siteId);
       await loadSites();
@@ -69,7 +78,7 @@ export default function SitesDashboard() {
     });
   };
 
-  if (loading) {
+  if (loading && sites.length === 0) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0052de]"></div>
@@ -115,36 +124,55 @@ export default function SitesDashboard() {
                   {site.status}
                 </span>
               </div>
-              
+
               <div className="text-gray-600 mb-4">
                 <div className="flex items-center mb-2">
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
                   </svg>
-                  <a href={site.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                    {site.domain}
-                  </a>
+                  {site.renderUrl ? (
+                    <a href={site.renderUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                      {site.domain}
+                    </a>
+                  ) : (
+                    <span>{site.domain}</span>
+                  )}
                 </div>
-                <div className="flex items-center mb-2">
+                <div className="flex items-center">
                   <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a4 4 0 118 0v4m-4 6v6m-4-6h8m-4 0v6m-4-6L8 7m8 0l-4-4m4 4v4" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  Created: {formatDate(site.created_at)}
+                  Created: {formatDate(site.createdAt)}
                 </div>
-                {site.deployed_at && (
-                  <div className="flex items-center">
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Deployed: {formatDate(site.deployed_at)}
-                  </div>
-                )}
               </div>
-              
+
+              {(site.status === 'pending' || site.status === 'deploying') && (
+                <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+                  <div className="flex items-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                    <span className="text-sm text-blue-700">
+                      {site.status === 'pending' ? 'Creating service...' : 'Deploying your site...'}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {site.status === 'error' && (
+                <div className="mb-4 p-3 bg-red-50 rounded-lg">
+                  <span className="text-sm text-red-700">Deployment failed. Please try again or contact support.</span>
+                </div>
+              )}
+
+              {site.status === 'suspended' && (
+                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                  <span className="text-sm text-gray-700">This site has been suspended.</span>
+                </div>
+              )}
+
               <div className="flex space-x-2">
-                {site.status === 'active' && (
+                {site.status === 'active' && site.renderUrl && (
                   <a
-                    href={site.url}
+                    href={site.renderUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex-1 bg-blue-600 text-white py-2 px-3 rounded text-sm font-medium hover:bg-blue-700 transition-colors text-center"
@@ -152,10 +180,11 @@ export default function SitesDashboard() {
                     Visit Site
                   </a>
                 )}
-                
+
                 <button
-                  onClick={() => handleDeleteSite(site.site_id)}
-                  className="flex-1 bg-red-600 text-white py-2 px-3 rounded text-sm font-medium hover:bg-red-700 transition-colors"
+                  onClick={() => handleDeleteSite(site.siteId)}
+                  disabled={site.status === 'deploying'}
+                  className="flex-1 bg-red-600 text-white py-2 px-3 rounded text-sm font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Delete
                 </button>
@@ -164,7 +193,6 @@ export default function SitesDashboard() {
           ))}
         </div>
       )}
-
     </div>
   );
 }

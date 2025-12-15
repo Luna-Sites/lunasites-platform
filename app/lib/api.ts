@@ -5,18 +5,15 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000
 
 // Types
 export interface Site {
-  id: number;
-  site_id: string;
+  id: string;
+  siteId: string;
+  userId: string;
   name: string;
   domain: string;
   status: 'pending' | 'deploying' | 'active' | 'error' | 'suspended';
-  created_at: string;
-  deployed_at?: string;
-  ssl_enabled: boolean;
-  backup_enabled: boolean;
-  url: string;
-  rancher_namespace?: string;
-  notes?: string;
+  renderUrl?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface SiteCreateRequest {

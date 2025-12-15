@@ -1,0 +1,58 @@
+{
+  "id": "categorization",
+  "title:i18n": "Categorization",
+  "description:i18n": "Adds keywords and language fields.",
+  "schema": {
+    "fieldsets": [
+      {
+        "fields": ["subjects", "language", "relatedItems", "coverage"],
+        "id": "categorization",
+        "title:i18n": "Categorization"
+      }
+    ],
+    "properties": {
+      "coverage": {
+        "description:i18n": "The spatial or temporal topic of this item, spatial applicability of this item, or jurisdiction under which this item is relevant.",
+        "title:i18n": "Coverage",
+        "type": "string"
+      },
+      "language": {
+        "description:i18n": "The language of this item.",
+        "factory": "Choice",
+        "title:i18n": "Language",
+        "type": "string",
+        "vocabulary": {
+          "@id": "availableLanguages"
+        }
+      },
+      "relatedItems": {
+        "additionalItems": true,
+        "default": [],
+        "description:i18n": "Related resources.",
+        "items": {
+          "description": "",
+          "title:i18n": "Related",
+          "type": "string"
+        },
+        "widgetOptions": {
+          "pattern_options": {
+            "recentlyUsed": true
+          }
+        },
+        "title:i18n": "Related Items",
+        "type": "array",
+        "uniqueItems": true,
+        "factory": "Relation List"
+      },
+      "subjects": {
+        "description:i18n": "The topic of this item.",
+        "factory": "Choice",
+        "title:i18n": "Tags",
+        "type": "string",
+        "vocabulary": {
+          "@id": "subjects"
+        }
+      }
+    }
+  }
+}
