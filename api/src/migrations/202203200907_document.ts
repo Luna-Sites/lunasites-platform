@@ -1,16 +1,14 @@
 import { existsSync, mkdirSync, readdirSync, rmSync } from 'fs';
 import type { Knex } from 'knex';
 
-const { config } = require(`${process.cwd()}/config`);
-
-interface Config {
-  blobsDir: string;
-}
+// Get blobsDir from environment (set by bootstrap) or use default
+const getBlobsDir = () => process.env.BLOBS_DIR || `${process.cwd()}/var/blobstorage`;
 
 export const up = async (knex: Knex): Promise<void> => {
   // Create blob dir if it doesn't exist
-  if (!existsSync((config as Config).blobsDir)) {
-    mkdirSync((config as Config).blobsDir, { recursive: true });
+  const blobsDir = getBlobsDir();
+  if (!existsSync(blobsDir)) {
+    mkdirSync(blobsDir, { recursive: true });
   }
   await knex.schema.createTable('document', (table: Knex.TableBuilder) => {
     table.uuid('uuid').primary();
@@ -119,7 +117,8 @@ export const down = async (knex: Knex): Promise<void> => {
   await knex.schema.dropTable('user_role_document');
   await knex.schema.dropTable('version');
   await knex.schema.dropTable('document');
-  readdirSync((config as Config).blobsDir).forEach((file) =>
-    rmSync(`${(config as Config).blobsDir}/${file}`),
-  );
+  const blobsDir = getBlobsDir();
+  if (existsSync(blobsDir)) {
+    readdirSync(blobsDir).forEach((file) => rmSync(`${blobsDir}/${file}`));
+  }
 };
