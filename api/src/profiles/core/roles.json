@@ -1,0 +1,45 @@
+{
+  "purge": true,
+  "roles": [
+    {
+      "id": "Anonymous",
+      "title:i18n": "Anonymous",
+      "permissions": ["Login", "Register"]
+    },
+    {
+      "id": "Authenticated",
+      "title:i18n": "Authenticated",
+      "permissions": ["Logout", "Manage Preferences"]
+    },
+    {
+      "id": "Owner",
+      "title:i18n": "Owner",
+      "permissions": ["Add", "Submit"]
+    },
+    {
+      "id": "Reader",
+      "title:i18n": "Reader",
+      "permissions": ["View"]
+    },
+    {
+      "id": "Contributor",
+      "title:i18n": "Contributor",
+      "permissions": ["Add"]
+    },
+    {
+      "id": "Editor",
+      "title:i18n": "Editor",
+      "permissions": ["Submit"]
+    },
+    {
+      "id": "Reviewer",
+      "title:i18n": "Reviewer",
+      "permissions": ["Review"]
+    },
+    {
+      "id": "Administrator",
+      "title:i18n": "Administrator",
+      "permissions": ["Add", "Review", "Submit", "Manage Users", "Manage Site"]
+    }
+  ]
+}

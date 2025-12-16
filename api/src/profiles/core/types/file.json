@@ -1,0 +1,37 @@
+{
+  "id": "File",
+  "title:i18n": "File",
+  "description:i18n": "Lets you upload a file to the site.",
+  "global_allow": true,
+  "filter_content_types": true,
+  "allowed_content_types": [],
+  "schema": {
+    "fieldsets": [
+      {
+        "fields": ["file"],
+        "id": "default",
+        "title:i18n": "Default"
+      }
+    ],
+    "properties": {
+      "file": {
+        "description": "",
+        "title:i18n": "File",
+        "type": "object",
+        "widget": "file",
+        "factory": "File"
+      }
+    },
+    "required": ["file"],
+    "behaviors": [
+      "dublin_core",
+      "dates",
+      "versioning",
+      "short_name",
+      "id_from_title",
+      "exclude_from_nav"
+    ],
+    "layouts": []
+  },
+  "workflow": "simple_publication_workflow"
+}

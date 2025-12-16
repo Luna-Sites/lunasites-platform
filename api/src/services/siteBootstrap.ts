@@ -17,10 +17,9 @@ const { isArray, isObject, mapKeys, mapValues, map, concat, findIndex } = _;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Path to Nick backend (using lunacms source)
-const LUNACMS_DIR = join(__dirname, '../../../../lunacms/backends/nick');
-const MIGRATIONS_DIR = join(LUNACMS_DIR, 'src/migrations');
-const PROFILES_DIR = join(LUNACMS_DIR, 'src/profiles');
+// Paths to local migrations and profiles (copied from Nick)
+const MIGRATIONS_DIR = join(__dirname, '../migrations');
+const PROFILES_DIR = join(__dirname, '../profiles');
 
 // Schema types (from Nick)
 interface Fieldset {
