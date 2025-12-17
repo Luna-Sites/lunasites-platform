@@ -101,15 +101,10 @@ export default function Login() {
                 </button>
 
                 {/* Divider */}
-                <div className="relative mb-6">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-slate-300"></div>
-                  </div>
-                  <div className="relative flex justify-center text-sm">
-                    <span className="px-4 bg-gradient-to-br from-slate-50 via-purple-50/30 to-blue-50/30 text-slate-500">
-                      Or continue with email
-                    </span>
-                  </div>
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="flex-1 border-t border-slate-300"></div>
+                  <span className="text-sm text-slate-500">Or continue with email</span>
+                  <div className="flex-1 border-t border-slate-300"></div>
                 </div>
 
                 <div className="space-y-6 mb-6">
