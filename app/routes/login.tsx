@@ -7,7 +7,7 @@ import { auth, googleProvider } from "../lib/firebase";
 import { signInWithPopup, signInWithEmailAndPassword } from "firebase/auth";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import WizardBackground from "../components/wizard/WizardBackground";
-import Logo from "../welcome/logo_mini.png";
+const Logo = "/logo/logo_lunasites_6.png";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -60,7 +60,7 @@ export default function Login() {
         <div className="flex flex-col p-8 lg:p-16 overflow-y-auto">
           {/* Logo */}
           <a href="/" className="mb-8">
-            <img src={Logo} alt="Luna Sites" className="h-10" />
+            <img src={Logo} alt="Luna Sites" className="w-[130px]" />
           </a>
 
           <div className="flex-1 flex items-center justify-center">
@@ -78,7 +78,7 @@ export default function Login() {
 
             {isLoading ? (
               <div className="text-center py-12">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center mx-auto mb-6">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#5A318F] to-[#D920B7] flex items-center justify-center mx-auto mb-6">
                   <Loader2 className="w-8 h-8 text-white animate-spin" />
                 </div>
                 <h3 className="text-xl font-semibold text-slate-900 mb-2">Signing you in...</h3>
@@ -143,7 +143,7 @@ export default function Login() {
                 </div>
 
                 <Button
-                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white mb-4 h-12"
+                  className="w-full bg-gradient-to-r from-[#5A318F] to-[#D920B7] hover:from-[#4A2875] hover:to-[#C01AA3] text-white mb-4 h-12"
                   onClick={handleEmailSignIn}
                   disabled={!canProceed}
                 >
@@ -153,7 +153,7 @@ export default function Login() {
                 <div className="text-center">
                   <a
                     href="/signup"
-                    className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                    className="text-sm text-[#5A318F] hover:text-[#4A2875] font-medium"
                   >
                     Don't have an account? Create one
                   </a>

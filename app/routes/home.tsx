@@ -13,9 +13,15 @@ import {
   Mail,
   Grid3x3,
   Play,
+  Settings,
+  LogOut,
+  HelpCircle,
 } from "lucide-react";
 const Logo = "/logo/logo_lunasites_6.png";
 import { showcaseImages, templateImages, demoImage } from "../lib/assets";
+import { useAuth } from "../contexts/AuthContext";
+import { auth } from "../lib/firebase";
+import { signOut } from "firebase/auth";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -29,8 +35,23 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Home() {
+  const { user } = useAuth();
   const [currentSlide, setCurrentSlide] = useState(1);
   const [isTransitioning, setIsTransitioning] = useState(true);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
+
+  // Get user initials for avatar
+  const userInitials = user?.email
+    ? user.email.substring(0, 2).toUpperCase()
+    : "U";
 
   const showcaseWebsites = [
     {
@@ -228,12 +249,47 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-3">
-            <a
-              href="/login"
-              className="px-4 py-2 text-slate-600 hover:text-slate-900 transition-colors"
-            >
-              Login
-            </a>
+            {user ? (
+              <div className="relative group">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#5A318F] to-[#D920B7] flex items-center justify-center text-white text-sm cursor-pointer font-semibold">
+                  {userInitials}
+                </div>
+                <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                  <a
+                    href="/sites"
+                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 rounded-t-lg"
+                  >
+                    <Layout className="w-4 h-4" />
+                    My Sites
+                  </a>
+                  <a
+                    href="/profile"
+                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <Settings className="w-4 h-4" />
+                    Account Settings
+                  </a>
+                  <button className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+                    <HelpCircle className="w-4 h-4" />
+                    Help
+                  </button>
+                  <button
+                    onClick={handleLogout}
+                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 rounded-b-lg border-t border-slate-200"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <a
+                href="/login"
+                className="px-4 py-2 text-slate-600 hover:text-slate-900 transition-colors"
+              >
+                Login
+              </a>
+            )}
             <a
               href="/builder"
               className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium px-4 py-2 bg-gradient-to-r from-[#5A318F] to-[#D920B7] hover:from-[#4A2875] hover:to-[#C01AA3] text-white transition-all"
