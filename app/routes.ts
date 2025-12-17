@@ -5,6 +5,7 @@ export default [
   route("/themes", "routes/themes.tsx"),
   route("/builder", "routes/builder.tsx"),
   route("/login", "routes/login.tsx"),
+  route("/signup", "routes/signup.tsx"),
   route("/sites", "routes/sites.tsx"),
   route("/billing", "routes/billing.tsx"),
   route("/profile", "routes/profile.tsx")

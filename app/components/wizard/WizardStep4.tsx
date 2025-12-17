@@ -1,4 +1,5 @@
-import { Loader2 } from 'lucide-react';
+import { useState } from 'react';
+import { Loader2, Mail, Eye, EyeOff } from 'lucide-react';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Button } from '../ui/button';
@@ -32,26 +33,11 @@ export default function WizardStep4({
   onGoogleSignIn,
   onEmailAuth
 }: WizardStep4Props) {
+  const [showEmailForm, setShowEmailForm] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
   return (
-    <div className="animate-in fade-in duration-500 max-w-2xl mx-auto">
-      <div className="mb-12 text-center">
-        <div className="mb-2 text-xs text-slate-500 tracking-wide">STEP 4 OF {totalSteps}</div>
-        <h2 className="text-4xl mb-4 text-slate-900 font-bold">
-          {isCreatingAccount ? 'Create your account' : 'Welcome back'}
-        </h2>
-        <p className="text-slate-600 text-lg">
-          {isCreatingAccount
-            ? 'Just one more step to launch your website'
-            : 'Sign in to continue building'}
-        </p>
-      </div>
-
-      {error && (
-        <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
-          {error}
-        </div>
-      )}
-
+    <div className="animate-in fade-in duration-500 max-w-md mx-auto">
       {isCompleting ? (
         <div className="text-center py-12">
           <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center mx-auto mb-6">
@@ -62,6 +48,33 @@ export default function WizardStep4({
         </div>
       ) : (
         <>
+          {/* Header */}
+          <div className="text-center mb-8">
+            <div className="mb-2 text-xs text-slate-500 tracking-wide">STEP 4 OF {totalSteps}</div>
+            <h1 className="text-2xl font-bold text-slate-900 mb-4">
+              {isCreatingAccount ? 'Create Your Account' : 'Welcome Back'}
+            </h1>
+            <p className="text-sm text-slate-500">
+              {isCreatingAccount ? (
+                <>
+                  By creating an account, you agree to our{' '}
+                  <a href="/terms" className="text-slate-700 underline hover:text-slate-900">Terms of Service</a>
+                  <br />
+                  and have read and understood the{' '}
+                  <a href="/privacy" className="text-slate-700 underline hover:text-slate-900">Privacy Policy</a>
+                </>
+              ) : (
+                'Sign in to continue building your website'
+              )}
+            </p>
+          </div>
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
+
           {/* Google Sign In Button */}
           <button
             onClick={onGoogleSignIn}
@@ -76,52 +89,62 @@ export default function WizardStep4({
             <span className="text-slate-900">Continue with Google</span>
           </button>
 
-          {/* Divider */}
-          <div className="relative mb-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-gradient-to-br from-slate-50 via-purple-50/30 to-blue-50/30 text-slate-500">
-                Or continue with email
-              </span>
-            </div>
-          </div>
-
-          <div className="space-y-6 mb-6">
-            <div>
-              <Label htmlFor="email" className="text-base font-semibold text-slate-900 mb-3 block">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                value={email}
-                onChange={(e) => onEmailChange(e.target.value)}
-                className="h-14 px-4 text-base bg-slate-50 border-slate-200 rounded-lg"
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="password" className="text-base font-semibold text-slate-900 mb-3 block">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => onPasswordChange(e.target.value)}
-                className="h-14 px-4 text-base bg-slate-50 border-slate-200 rounded-lg"
-              />
-            </div>
-          </div>
-
-          <Button
-            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 mb-4 h-11"
-            onClick={onEmailAuth}
-            disabled={!canProceed}
+          {/* Email Sign In/Up Button */}
+          <button
+            onClick={() => setShowEmailForm(!showEmailForm)}
+            className="w-full mb-6 px-6 py-3 bg-white border-2 border-slate-300 rounded-lg hover:bg-slate-50 hover:border-slate-400 transition-all flex items-center justify-center gap-3 font-medium"
           >
-            {isCreatingAccount ? 'Create Account & Launch Site' : 'Sign In'}
-          </Button>
+            <Mail className="w-5 h-5" />
+            <span className="text-slate-900">Continue with Email</span>
+          </button>
 
+          {/* Email Form (expandable) */}
+          {showEmailForm && (
+            <div className="mb-6 space-y-6 animate-in slide-in-from-top-2 duration-200">
+              <div>
+                <Label htmlFor="email" className="text-base font-semibold text-slate-900 mb-3 block">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={email}
+                  onChange={(e) => onEmailChange(e.target.value)}
+                  className="h-14 px-4 text-base bg-slate-50 border-slate-200 rounded-lg"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="password" className="text-base font-semibold text-slate-900 mb-3 block">Password</Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={password}
+                    onChange={(e) => onPasswordChange(e.target.value)}
+                    className="h-14 px-4 pr-12 text-base bg-slate-50 border-slate-200 rounded-lg"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              <Button
+                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white h-12"
+                onClick={onEmailAuth}
+                disabled={!canProceed}
+              >
+                {isCreatingAccount ? 'Create Account & Launch Site' : 'Sign In'}
+              </Button>
+            </div>
+          )}
+
+          {/* Toggle account mode link */}
           <div className="text-center">
             <button
               onClick={onToggleAccountMode}
@@ -129,7 +152,7 @@ export default function WizardStep4({
             >
               {isCreatingAccount
                 ? 'Already have an account? Sign in'
-                : 'Need an account? Create one'}
+                : "Don't have an account? Create one"}
             </button>
           </div>
         </>

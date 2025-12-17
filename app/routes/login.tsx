@@ -5,8 +5,9 @@ import { Label } from "../components/ui/label";
 import { Button } from "../components/ui/button";
 import { auth, googleProvider } from "../lib/firebase";
 import { signInWithPopup, signInWithEmailAndPassword } from "firebase/auth";
-import { Loader2 } from "lucide-react";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 import WizardBackground from "../components/wizard/WizardBackground";
+import Logo from "../welcome/logo_mini.png";
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -20,6 +21,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleGoogleSignIn = async () => {
     try {
@@ -55,7 +57,13 @@ export default function Login() {
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-blue-50/30">
       <div className="grid lg:grid-cols-[70%_30%] min-h-screen">
         {/* Left Panel - Login Form */}
-        <div className="flex flex-col p-8 lg:p-16 overflow-y-auto justify-center">
+        <div className="flex flex-col p-8 lg:p-16 overflow-y-auto">
+          {/* Logo */}
+          <a href="/" className="mb-8">
+            <img src={Logo} alt="Luna Sites" className="h-10" />
+          </a>
+
+          <div className="flex-1 flex items-center justify-center">
           <div className="animate-in fade-in duration-500 mx-auto w-full" style={{ maxWidth: '525px' }}>
             <div className="mb-12 text-center">
               <h2 className="text-4xl mb-4 text-slate-900 font-bold">Welcome back</h2>
@@ -119,14 +127,23 @@ export default function Login() {
 
                   <div>
                     <Label htmlFor="password" className="text-base font-semibold text-slate-900 mb-3 block">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="h-14 px-4 text-base bg-slate-50 border-slate-200 rounded-lg"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="h-14 px-4 pr-12 text-base bg-slate-50 border-slate-200 rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -140,7 +157,7 @@ export default function Login() {
 
                 <div className="text-center">
                   <a
-                    href="/builder"
+                    href="/signup"
                     className="text-sm text-purple-600 hover:text-purple-700 font-medium"
                   >
                     Don't have an account? Create one
@@ -148,6 +165,7 @@ export default function Login() {
                 </div>
               </>
             )}
+          </div>
           </div>
         </div>
 
