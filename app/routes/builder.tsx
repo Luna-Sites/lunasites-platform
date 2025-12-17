@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Route } from "./+types/builder";
 import { ArrowRight, ArrowLeft } from 'lucide-react';
 import { Button } from "../components/ui/button";
-import { api, validateSiteId, handleApiError } from "../lib/api";
+import { validateSiteId } from "../lib/api";
 import { auth, googleProvider } from "../lib/firebase";
 import { signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { colorPalettes } from "../data/wizard-data";
@@ -41,7 +41,6 @@ export default function Builder() {
   const [selectedInputStyle, setSelectedInputStyle] = useState<string>('rounded');
   const [error, setError] = useState<string | null>(null);
   const [siteIdError, setSiteIdError] = useState<string | null>(null);
-  const [checkingAvailability, setCheckingAvailability] = useState(false);
 
   const totalSteps = 4;
 
@@ -71,24 +70,6 @@ export default function Builder() {
     setSiteIdError(validateSiteId(formatted));
   };
 
-  const checkSiteAvailability = async (siteId: string) => {
-    if (!siteId || validateSiteId(siteId)) return;
-
-    setCheckingAvailability(true);
-    try {
-      const response = await api.checkSiteAvailability(siteId);
-      if (!response.available) {
-        setSiteIdError('This site ID is already taken');
-      } else {
-        setSiteIdError(null);
-      }
-    } catch (error) {
-      console.error('Error checking site availability:', error);
-    } finally {
-      setCheckingAvailability(false);
-    }
-  };
-
   const handleNext = () => {
     if (step < totalSteps) {
       setStep(step + 1);
@@ -104,13 +85,15 @@ export default function Builder() {
   const handleGoogleSignIn = async () => {
     try {
       setError(null);
+      setIsCompleting(true);
       const result = await signInWithPopup(auth, googleProvider);
       if (result.user) {
-        await handleCreateSite();
+        window.location.href = "/sites";
       }
     } catch (error: any) {
       console.error('Google sign-in error:', error);
       setError(error.message || 'Failed to sign in with Google');
+      setIsCompleting(false);
     }
   };
 
@@ -125,35 +108,10 @@ export default function Builder() {
         await signInWithEmailAndPassword(auth, email, password);
       }
 
-      await handleCreateSite();
+      window.location.href = "/sites";
     } catch (error: any) {
       console.error('Email auth error:', error);
       setError(error.message || 'Authentication failed');
-      setIsCompleting(false);
-    }
-  };
-
-  const handleCreateSite = async () => {
-    setIsCompleting(true);
-    setError(null);
-
-    try {
-      const response = await api.createSite({
-        site_id: siteId,
-        name: siteTitle
-      });
-
-      if (response.success) {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        window.location.href = "/sites";
-      } else {
-        setError(response.message || 'Failed to create site');
-        setIsCompleting(false);
-      }
-    } catch (error) {
-      console.error("Error creating site:", error);
-      const errorMessage = handleApiError(error);
-      setError(errorMessage);
       setIsCompleting(false);
     }
   };
@@ -162,7 +120,7 @@ export default function Builder() {
     switch (step) {
       case 1: return selectedTemplate !== null;
       case 2: return selectedPalette !== null && selectedFont !== null;
-      case 3: return siteTitle.trim() !== '' && siteId.trim() !== '' && !siteIdError && !checkingAvailability;
+      case 3: return siteTitle.trim() !== '' && siteId.trim() !== '' && !siteIdError;
       case 4:
         if (isCreatingAccount) {
           return firstName.trim() !== '' && lastName.trim() !== '' && email.trim() !== '' && password.trim() !== '' && confirmPassword.trim() !== '' && password === confirmPassword;
@@ -220,11 +178,11 @@ export default function Builder() {
                 siteTitle={siteTitle}
                 siteId={siteId}
                 siteIdError={siteIdError}
-                checkingAvailability={checkingAvailability}
+                checkingAvailability={false}
                 totalSteps={totalSteps}
                 onSiteTitleChange={setSiteTitle}
                 onSiteIdChange={handleSiteIdChange}
-                onSiteIdBlur={() => checkSiteAvailability(siteId)}
+                onSiteIdBlur={() => {}}
               />
             )}
 
