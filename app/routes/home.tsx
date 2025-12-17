@@ -14,7 +14,7 @@ import {
   Grid3x3,
   Play,
 } from "lucide-react";
-import Logo from "../welcome/logo_mini.png";
+const Logo = "/logo/logo_lunasites_6.png";
 import { showcaseImages, templateImages, demoImage } from "../lib/assets";
 
 export function meta({}: Route.MetaArgs) {
@@ -200,12 +200,9 @@ export default function Home() {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-200/50">
         <div className="w-full px-6 py-4 flex items-center justify-between bg-white">
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-[74px]">
             <a href="/" className="flex items-center gap-2">
-              <img src={Logo} alt="Luna Sites" className="h-10" />
-              <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-fuchsia-600 bg-clip-text text-transparent">
-                Luna Sites
-              </span>
+              <img src={Logo} alt="Luna Sites" className="w-[130px]" />
             </a>
 
             <nav className="hidden md:flex items-end gap-8">
@@ -239,7 +236,7 @@ export default function Home() {
             </a>
             <a
               href="/builder"
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium px-4 py-2 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-700 hover:to-fuchsia-700 text-white transition-all"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium px-4 py-2 bg-gradient-to-r from-[#5A318F] to-[#D920B7] hover:from-[#4A2875] hover:to-[#C01AA3] text-white transition-all"
             >
               Start Now
             </a>
@@ -264,7 +261,7 @@ export default function Home() {
             <div className="flex items-center justify-center gap-4 flex-wrap">
               <a
                 href="/builder"
-                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-10 px-8 bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-700 hover:to-fuchsia-700 text-white transition-all"
+                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-10 px-8 bg-gradient-to-r from-[#5A318F] to-[#D920B7] hover:from-[#4A2875] hover:to-[#C01AA3] text-white transition-all"
               >
                 Start Building Now
               </a>
@@ -369,7 +366,7 @@ export default function Home() {
                   key={index}
                   className="p-8 border border-slate-200 hover:border-purple-300 transition-all duration-300 shadow-sm hover:shadow-lg rounded-xl bg-white"
                 >
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-600 to-fuchsia-600 flex items-center justify-center mb-6">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#5A318F] to-[#D920B7] flex items-center justify-center mb-6">
                     <Icon className="w-7 h-7 text-white" />
                   </div>
                   <h3 className="text-slate-900 mb-3 text-lg font-semibold">
@@ -524,7 +521,7 @@ export default function Home() {
       {/* CTA Section */}
       <section className="py-20 px-6">
         <div className="max-w-4xl mx-auto">
-          <div className="p-12 text-center bg-gradient-to-br from-purple-600 to-fuchsia-600 rounded-xl">
+          <div className="p-12 text-center bg-gradient-to-br from-[#5A318F] to-[#D920B7] rounded-xl">
             <h2 className="text-white mb-4 text-3xl md:text-4xl font-bold">
               Ready to Build Your Dream Website?
             </h2>
@@ -534,7 +531,7 @@ export default function Home() {
             </p>
             <a
               href="/builder"
-              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-10 px-8 bg-white text-purple-600 hover:bg-slate-100 transition-all"
+              className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-10 px-8 bg-white text-[#5A318F] hover:bg-slate-100 transition-all"
             >
               Get Started Now
             </a>
@@ -551,9 +548,8 @@ export default function Home() {
                 <img
                   src={Logo}
                   alt="Luna Sites"
-                  className="h-8 brightness-0 invert"
+                  className="w-[130px]"
                 />
-                <span className="text-xl font-bold text-white">Luna Sites</span>
               </div>
               <p className="text-slate-400">
                 Build beautiful websites effortlessly with AI-powered tools

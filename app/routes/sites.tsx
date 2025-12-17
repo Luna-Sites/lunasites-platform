@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import Logo from '../welcome/logo_mini.png';
+const Logo = '/logo/logo_lunasites_6.png';
 import { auth } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
 import { api } from '../lib/api';
@@ -28,9 +28,6 @@ export function meta({}: Route.MetaArgs) {
 export default function Sites() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'domains'>(
-    'dashboard',
-  );
   const [searchQuery, setSearchQuery] = useState('');
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [websites, setWebsites] = useState<any[]>([]);
@@ -145,26 +142,14 @@ export default function Sites() {
           <div className="px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-8">
               <button onClick={handleGoHome} className="cursor-pointer">
-                <img src={Logo} alt="Luna Sites" className="h-10" />
+                <img src={Logo} alt="Luna Sites" className="w-[130px]" />
               </button>
 
-              <nav className="flex gap-6">
-                <button
-                  onClick={() => setActiveTab('dashboard')}
-                  className={`pb-1 border-b-2 transition-colors ${
-                    activeTab === 'dashboard'
-                      ? 'border-slate-900 text-slate-900 font-semibold'
-                      : 'border-transparent text-slate-500 hover:text-slate-900'
-                  }`}
-                >
-                  Dashboard
-                </button>
-              </nav>
-            </div>
+                          </div>
 
             <div className="flex items-center gap-4">
               <div className="relative group">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white text-sm cursor-pointer font-semibold">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#5A318F] to-[#D920B7] flex items-center justify-center text-white text-sm cursor-pointer font-semibold">
                   {userInitials}
                 </div>
                 <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
@@ -196,7 +181,7 @@ export default function Sites() {
         <div className="px-6 py-8 flex-1">
           {/* Page Header */}
           <div className="flex items-center justify-between mb-8">
-            <h1 className="text-3xl text-slate-900 font-bold">My Websites</h1>
+            <h1 className="text-xl text-slate-500 font-medium">My Websites</h1>
 
             <div className="flex items-center gap-4">
               {/* Search */}
@@ -214,7 +199,7 @@ export default function Sites() {
               {/* Create Website Button */}
               <Button
                 onClick={handleCreateWebsite}
-                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white h-10"
+                className="bg-gradient-to-r from-[#5A318F] to-[#D920B7] hover:from-[#4A2875] hover:to-[#C01AA3] text-white h-10"
               >
                 Create New Website
               </Button>
@@ -243,7 +228,7 @@ export default function Sites() {
                       >
                         {isPlaceholder ? (
                           <div className="text-center p-6">
-                            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center">
+                            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#5A318F] to-[#D920B7] flex items-center justify-center">
                               <span className="text-white text-2xl">+</span>
                             </div>
                             <p className="text-slate-600 font-medium">
@@ -414,7 +399,7 @@ export default function Sites() {
                         onClick={
                           isPlaceholder ? handleCreateWebsite : undefined
                         }
-                        className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white mt-6 px-4 py-2 text-sm w-[200px] mx-auto"
+                        className="bg-gradient-to-r from-[#5A318F] to-[#D920B7] hover:from-[#4A2875] hover:to-[#C01AA3] text-white mt-6 px-4 py-2 text-sm w-[200px] mx-auto"
                       >
                         {isPlaceholder ? 'Create Website' : 'Edit Website'}
                       </Button>

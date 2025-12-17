@@ -11,7 +11,7 @@ import {
 
 // Asset paths - mapping from Figma exports
 export const ASSETS = {
-  logo: '/wizard-assets/1e2df6b5a066341b6419d0cf910c5e86038504d4.png',
+  logo: '/logo/logo_lunasites_6.png',
   portfolioImg: '/wizard-assets/cadb01d5f39257b9bed043b110f35314dd1c3305.png',
   restaurantImg: '/wizard-assets/b23bd12188c3ef947fd6b1b0bbe43fd80fbfc342.png',
   shopImg: '/wizard-assets/71307606acb6787b5e76de625a8ec65231dd9256.png',
