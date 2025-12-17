@@ -19,7 +19,9 @@ export const ASSETS = {
   eventImg: '/wizard-assets/76d3c409747ba05034bcb396ba101e021e656b6e.png',
   img6: '/wizard-assets/f2b6ee8458f1f24edd1158a6df9bdc487e1e99a2.png',
   nebulaImg: '/wizard-assets/0c3285ca46a22c90514c77bd00a3b2fc67ea516b.png',
-  nebulaStep3Img: '/wizard-assets/caad2fb66ee13072925944451b9524e8de8b5c3d.png'
+  nebulaStep3Img: '/images/nebula-1.png',
+  nebulaStep4Img: '/images/nebula-2.png',
+  nebulaSitesImg: '/images/nebula-3.png'
 };
 
 export const categories = [

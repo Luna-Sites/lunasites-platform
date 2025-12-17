@@ -1,5 +1,6 @@
 import { ArrowRight } from 'lucide-react';
 import { categories, templates } from '../../data/wizard-data';
+import WizardProgress from './WizardProgress';
 
 interface WizardStep1Props {
   selectedCategory: string | null;
@@ -22,11 +23,8 @@ export default function WizardStep1({
   return (
     <div className="min-h-screen p-8 lg:p-16">
       <div className="max-w-7xl mx-auto">
+        <WizardProgress currentStep={1} totalSteps={totalSteps} />
         <div className="mb-12 text-center">
-          <a href="/" className="text-sm text-slate-500 hover:text-slate-700 mb-8 flex items-center gap-2 mx-auto w-fit">
-            ← Back to Home
-          </a>
-          <div className="mb-2 text-xs text-slate-500 tracking-wide">STEP 1 OF {totalSteps}</div>
           <h1 className="text-4xl mb-3 text-slate-900 font-bold">Choose your starting point</h1>
           <p className="text-slate-600 mb-8">
             Select a template to customize or start with a blank canvas

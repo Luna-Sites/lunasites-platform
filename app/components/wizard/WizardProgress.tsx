@@ -9,9 +9,9 @@ export default function WizardProgress({ currentStep, totalSteps }: WizardProgre
   return (
     <div className="mb-12">
       <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
+        <a href="/" className="flex items-center gap-2">
           <img src={ASSETS.logo} alt="Luna Sites" className="h-20" />
-        </div>
+        </a>
         <span className="text-sm text-slate-500">Step {currentStep} of {totalSteps}</span>
       </div>
 
