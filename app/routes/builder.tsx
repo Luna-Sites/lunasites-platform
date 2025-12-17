@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { Route } from "./+types/builder";
 import { ArrowRight, ArrowLeft } from 'lucide-react';
 import { Button } from "../components/ui/button";
-import { validateSiteId } from "../lib/api";
+import { validateSiteId, api } from "../lib/api";
 import { auth, googleProvider } from "../lib/firebase";
 import { signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { colorPalettes } from "../data/wizard-data";
@@ -82,13 +82,32 @@ export default function Builder() {
     }
   };
 
+  const handleCreateSite = async () => {
+    try {
+      const result = await api.createSite({
+        site_id: siteId,
+        name: siteTitle,
+      });
+
+      if (result.success) {
+        window.location.href = "/sites";
+      } else {
+        throw new Error(result.message || 'Failed to create site');
+      }
+    } catch (error: any) {
+      console.error('Site creation error:', error);
+      setError(error.message || 'Failed to create site');
+      setIsCompleting(false);
+    }
+  };
+
   const handleGoogleSignIn = async () => {
     try {
       setError(null);
       setIsCompleting(true);
       const result = await signInWithPopup(auth, googleProvider);
       if (result.user) {
-        window.location.href = "/sites";
+        await handleCreateSite();
       }
     } catch (error: any) {
       console.error('Google sign-in error:', error);
@@ -108,7 +127,7 @@ export default function Builder() {
         await signInWithEmailAndPassword(auth, email, password);
       }
 
-      window.location.href = "/sites";
+      await handleCreateSite();
     } catch (error: any) {
       console.error('Email auth error:', error);
       setError(error.message || 'Authentication failed');
