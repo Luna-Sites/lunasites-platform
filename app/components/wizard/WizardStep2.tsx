@@ -1,0 +1,84 @@
+import TemplatePreview from './TemplatePreview';
+import StylePanel from './StylePanel';
+import { ASSETS } from '../../data/wizard-data';
+
+interface WizardStep2Props {
+  selectedTemplate: string | null;
+  selectedPalette: string;
+  selectedFont: string;
+  selectedButtonStyle: string;
+  selectedInputStyle: string;
+  expandedSection: string | null;
+  currentColors: string[];
+  totalSteps: number;
+  onPaletteChange: (paletteId: string) => void;
+  onFontChange: (fontId: string) => void;
+  onButtonStyleChange: (styleId: string) => void;
+  onInputStyleChange: (styleId: string) => void;
+  onExpandSection: (section: string | null) => void;
+  onCustomColorChange: (index: number, color: string) => void;
+}
+
+export default function WizardStep2({
+  selectedTemplate,
+  selectedPalette,
+  selectedFont,
+  selectedButtonStyle,
+  selectedInputStyle,
+  expandedSection,
+  currentColors,
+  totalSteps,
+  onPaletteChange,
+  onFontChange,
+  onButtonStyleChange,
+  onInputStyleChange,
+  onExpandSection,
+  onCustomColorChange
+}: WizardStep2Props) {
+  return (
+    <>
+      {/* Left Panel - Preview */}
+      <div className="animate-in fade-in duration-500">
+        <div className="mb-8">
+          <div className="mb-2 text-xs text-slate-500 tracking-wide">STEP 2 OF {totalSteps}</div>
+          <h2 className="text-4xl mb-4 text-slate-900 font-bold">Choose your style</h2>
+          <p className="text-slate-600 text-lg">Pick colors and fonts that match your vision</p>
+        </div>
+
+        {/* Template Preview with Selected Colors & Fonts */}
+        <div className="rounded-2xl overflow-hidden shadow-2xl border-2 border-slate-200">
+          <TemplatePreview
+            selectedTemplate={selectedTemplate}
+            selectedFont={selectedFont}
+            selectedButtonStyle={selectedButtonStyle}
+            colors={currentColors}
+          />
+        </div>
+      </div>
+
+      {/* Right Panel - Style Controls (rendered in parent's grid layout) */}
+    </>
+  );
+}
+
+// Separate export for the right panel
+export function WizardStep2RightPanel(props: Omit<WizardStep2Props, 'totalSteps'>) {
+  return (
+    <div className="p-8 lg:p-16">
+      <StylePanel
+        selectedPalette={props.selectedPalette}
+        selectedFont={props.selectedFont}
+        selectedButtonStyle={props.selectedButtonStyle}
+        selectedInputStyle={props.selectedInputStyle}
+        expandedSection={props.expandedSection}
+        currentColors={props.currentColors}
+        onPaletteChange={props.onPaletteChange}
+        onFontChange={props.onFontChange}
+        onButtonStyleChange={props.onButtonStyleChange}
+        onInputStyleChange={props.onInputStyleChange}
+        onExpandSection={props.onExpandSection}
+        onCustomColorChange={props.onCustomColorChange}
+      />
+    </div>
+  );
+}
