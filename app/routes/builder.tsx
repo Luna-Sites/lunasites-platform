@@ -6,6 +6,7 @@ import { validateSiteId, api } from "../lib/api";
 import { auth, googleProvider } from "../lib/firebase";
 import { signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { colorPalettes } from "../data/wizard-data";
+import { useAuth } from "../contexts/AuthContext";
 import WizardStep1 from "../components/wizard/WizardStep1";
 import WizardStep2, { WizardStep2RightPanel } from "../components/wizard/WizardStep2";
 import WizardStep3 from "../components/wizard/WizardStep3";
@@ -21,6 +22,7 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Builder() {
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
@@ -42,7 +44,9 @@ export default function Builder() {
   const [error, setError] = useState<string | null>(null);
   const [siteIdError, setSiteIdError] = useState<string | null>(null);
 
-  const totalSteps = 4;
+  // If user is logged in, skip auth step (3 steps instead of 4)
+  const isLoggedIn = !!user;
+  const totalSteps = isLoggedIn ? 3 : 4;
 
 
   const handleTemplateSelect = (templateId: string) => {
@@ -70,7 +74,14 @@ export default function Builder() {
     setSiteIdError(validateSiteId(formatted));
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
+    // If user is logged in and on step 3, create site directly
+    if (isLoggedIn && step === 3) {
+      setIsCompleting(true);
+      await handleCreateSite();
+      return;
+    }
+
     if (step < totalSteps) {
       setStep(step + 1);
     }
@@ -205,8 +216,26 @@ export default function Builder() {
               />
             )}
 
-            {/* Step 4: Authentication */}
-            {step === 4 && (
+            {/* Show loading state when creating site for logged-in users */}
+            {isLoggedIn && isCompleting && (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#5A318F] to-[#D920B7] flex items-center justify-center mx-auto mb-6 animate-pulse">
+                    <ArrowRight className="w-8 h-8 text-white" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-slate-900 mb-2">Creating your site...</h3>
+                  <p className="text-slate-600">This will only take a moment</p>
+                  {error && (
+                    <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+                      {error}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Step 4: Authentication (only for non-logged-in users) */}
+            {!isLoggedIn && step === 4 && (
               <WizardStep4
                 firstName={firstName}
                 lastName={lastName}
@@ -241,13 +270,26 @@ export default function Builder() {
                   Back
                 </Button>
 
-                {step < 4 && (
+                {/* Show Continue button for steps before the final step */}
+                {step < totalSteps && (
                   <Button
                     onClick={handleNext}
                     disabled={!canProceed()}
-                    className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white gap-2"
+                    className="bg-gradient-to-r from-[#5A318F] to-[#D920B7] hover:from-[#4A2875] hover:to-[#C01AA3] text-white gap-2"
                   >
                     Continue
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                )}
+
+                {/* Show Create Site button on final step for logged-in users */}
+                {isLoggedIn && step === totalSteps && (
+                  <Button
+                    onClick={handleNext}
+                    disabled={!canProceed()}
+                    className="bg-gradient-to-r from-[#5A318F] to-[#D920B7] hover:from-[#4A2875] hover:to-[#C01AA3] text-white gap-2"
+                  >
+                    Create Site
                     <ArrowRight className="w-4 h-4" />
                   </Button>
                 )}
