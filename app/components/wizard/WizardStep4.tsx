@@ -5,36 +5,49 @@ import { Label } from '../ui/label';
 import { Button } from '../ui/button';
 
 interface WizardStep4Props {
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
+  confirmPassword: string;
   isCreatingAccount: boolean;
   isCompleting: boolean;
   error: string | null;
   totalSteps: number;
   canProceed: boolean;
+  onFirstNameChange: (firstName: string) => void;
+  onLastNameChange: (lastName: string) => void;
   onEmailChange: (email: string) => void;
   onPasswordChange: (password: string) => void;
+  onConfirmPasswordChange: (confirmPassword: string) => void;
   onToggleAccountMode: () => void;
   onGoogleSignIn: () => void;
   onEmailAuth: () => void;
 }
 
 export default function WizardStep4({
+  firstName,
+  lastName,
   email,
   password,
+  confirmPassword,
   isCreatingAccount,
   isCompleting,
   error,
   totalSteps,
   canProceed,
+  onFirstNameChange,
+  onLastNameChange,
   onEmailChange,
   onPasswordChange,
+  onConfirmPasswordChange,
   onToggleAccountMode,
   onGoogleSignIn,
   onEmailAuth
 }: WizardStep4Props) {
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   return (
     <div className="animate-in fade-in duration-500 max-w-md mx-auto">
@@ -100,42 +113,115 @@ export default function WizardStep4({
 
           {/* Email Form (expandable) */}
           {showEmailForm && (
-            <div className="mb-6 space-y-6 animate-in slide-in-from-top-2 duration-200">
+            <div className="mb-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
+              {isCreatingAccount && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="firstName" className="text-sm font-semibold text-slate-900 mb-1.5 block">First Name</Label>
+                    <Input
+                      id="firstName"
+                      type="text"
+                      placeholder="John"
+                      value={firstName}
+                      onChange={(e) => onFirstNameChange(e.target.value)}
+                      className="h-11 px-3 text-sm bg-slate-50 border-slate-200 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName" className="text-sm font-semibold text-slate-900 mb-1.5 block">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      type="text"
+                      placeholder="Doe"
+                      value={lastName}
+                      onChange={(e) => onLastNameChange(e.target.value)}
+                      className="h-11 px-3 text-sm bg-slate-50 border-slate-200 rounded-lg"
+                    />
+                  </div>
+                </div>
+              )}
+
               <div>
-                <Label htmlFor="email" className="text-base font-semibold text-slate-900 mb-3 block">Email</Label>
+                <Label htmlFor="email" className="text-sm font-semibold text-slate-900 mb-1.5 block">Email</Label>
                 <Input
                   id="email"
                   type="email"
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => onEmailChange(e.target.value)}
-                  className="h-14 px-4 text-base bg-slate-50 border-slate-200 rounded-lg"
+                  className="h-11 px-3 text-sm bg-slate-50 border-slate-200 rounded-lg"
                 />
               </div>
 
-              <div>
-                <Label htmlFor="password" className="text-base font-semibold text-slate-900 mb-3 block">Password</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={password}
-                    onChange={(e) => onPasswordChange(e.target.value)}
-                    className="h-14 px-4 pr-12 text-base bg-slate-50 border-slate-200 rounded-lg"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
+              {isCreatingAccount ? (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="password" className="text-sm font-semibold text-slate-900 mb-1.5 block">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => onPasswordChange(e.target.value)}
+                        className="h-11 px-3 pr-10 text-sm bg-slate-50 border-slate-200 rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="confirm-password" className="text-sm font-semibold text-slate-900 mb-1.5 block">Confirm Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="confirm-password"
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={confirmPassword}
+                        onChange={(e) => onConfirmPasswordChange(e.target.value)}
+                        className="h-11 px-3 pr-10 text-sm bg-slate-50 border-slate-200 rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div>
+                  <Label htmlFor="password" className="text-sm font-semibold text-slate-900 mb-1.5 block">Password</Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="••••••••"
+                      value={password}
+                      onChange={(e) => onPasswordChange(e.target.value)}
+                      className="h-11 px-3 pr-10 text-sm bg-slate-50 border-slate-200 rounded-lg"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <Button
-                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white h-12"
+                className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white h-11"
                 onClick={onEmailAuth}
                 disabled={!canProceed}
               >

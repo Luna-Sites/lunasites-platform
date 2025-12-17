@@ -17,6 +17,8 @@ export function meta({}: Route.MetaArgs) {
 }
 
 export default function Signup() {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -73,7 +75,7 @@ export default function Signup() {
     }
   };
 
-  const canProceed = email.trim() !== '' && password.trim() !== '' && confirmPassword.trim() !== '';
+  const canProceed = firstName.trim() !== '' && lastName.trim() !== '' && email.trim() !== '' && password.trim() !== '' && confirmPassword.trim() !== '';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-blue-50/30">
@@ -81,7 +83,7 @@ export default function Signup() {
         {/* Left Panel - Signup Form */}
         <div className="flex flex-col p-8 lg:p-16 overflow-y-auto">
           {/* Logo */}
-          <a href="/" className="mb-8">
+          <a href="/" className="mb-4">
             <img src={Logo} alt="Luna Sites" className="h-10" />
           </a>
 
@@ -98,9 +100,9 @@ export default function Signup() {
         ) : (
           <>
             {/* Header */}
-            <div className="mb-12 text-center">
-              <h2 className="text-4xl mb-4 text-slate-900 font-bold">Create your account</h2>
-              <p className="text-slate-600 text-lg">
+            <div className="mb-6 text-center">
+              <h2 className="text-3xl mb-2 text-slate-900 font-bold">Create your account</h2>
+              <p className="text-slate-600 text-sm">
                 By creating an account, you agree to our{' '}
                 <a href="/terms" className="text-slate-700 underline hover:text-slate-900">Terms of Service</a>
                 {' '}and have read and understood the{' '}
@@ -109,19 +111,19 @@ export default function Signup() {
             </div>
 
             {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
                 {error}
               </div>
             )}
 
             {/* Email preference checkbox */}
-            <div className="flex items-start gap-3 mb-6 p-3 border border-slate-200 rounded-lg">
+            <div className="flex items-start gap-3 mb-4 p-2.5 border border-slate-200 rounded-lg">
               <input
                 type="checkbox"
                 id="no-emails"
                 checked={noEmails}
                 onChange={(e) => setNoEmails(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                className="mt-0.5 h-4 w-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
               />
               <label htmlFor="no-emails" className="text-sm text-purple-600 cursor-pointer">
                 I do not want to receive emails about new features and products
@@ -131,7 +133,7 @@ export default function Signup() {
             {/* Google Sign Up Button */}
             <button
               onClick={handleGoogleSignUp}
-              className="w-full mb-6 px-6 py-3 bg-white border-2 border-slate-300 rounded-lg hover:bg-slate-50 hover:border-slate-400 transition-all flex items-center justify-center gap-3 font-medium"
+              className="w-full mb-3 px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg hover:bg-slate-50 hover:border-slate-400 transition-all flex items-center justify-center gap-3 font-medium"
             >
               <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M17.64 9.20443C17.64 8.56625 17.5827 7.95262 17.4764 7.36353H9V10.8449H13.8436C13.635 11.9699 13.0009 12.9231 12.0477 13.5613V15.8194H14.9564C16.6582 14.2526 17.64 11.9453 17.64 9.20443Z" fill="#4285F4"/>
@@ -145,7 +147,7 @@ export default function Signup() {
             {/* Email Sign Up Button */}
             <button
               onClick={() => setShowEmailForm(!showEmailForm)}
-              className="w-full mb-6 px-6 py-3 bg-white border-2 border-slate-300 rounded-lg hover:bg-slate-50 hover:border-slate-400 transition-all flex items-center justify-center gap-3 font-medium"
+              className="w-full mb-4 px-4 py-2.5 bg-white border-2 border-slate-300 rounded-lg hover:bg-slate-50 hover:border-slate-400 transition-all flex items-center justify-center gap-3 font-medium"
             >
               <Mail className="w-5 h-5" />
               <span className="text-slate-900">Continue with Email</span>
@@ -153,63 +155,90 @@ export default function Signup() {
 
             {/* Email Form (expandable) */}
             {showEmailForm && (
-              <div className="mb-6 space-y-6 animate-in slide-in-from-top-2 duration-200">
+              <div className="mb-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="firstName" className="text-sm font-semibold text-slate-900 mb-1.5 block">First Name</Label>
+                    <Input
+                      id="firstName"
+                      type="text"
+                      placeholder="John"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className="h-11 px-3 text-sm bg-slate-50 border-slate-200 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="lastName" className="text-sm font-semibold text-slate-900 mb-1.5 block">Last Name</Label>
+                    <Input
+                      id="lastName"
+                      type="text"
+                      placeholder="Doe"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      className="h-11 px-3 text-sm bg-slate-50 border-slate-200 rounded-lg"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <Label htmlFor="email" className="text-base font-semibold text-slate-900 mb-3 block">Email</Label>
+                  <Label htmlFor="email" className="text-sm font-semibold text-slate-900 mb-1.5 block">Email</Label>
                   <Input
                     id="email"
                     type="email"
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="h-14 px-4 text-base bg-slate-50 border-slate-200 rounded-lg"
+                    className="h-11 px-3 text-sm bg-slate-50 border-slate-200 rounded-lg"
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="password" className="text-base font-semibold text-slate-900 mb-3 block">Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="h-14 px-4 pr-12 text-base bg-slate-50 border-slate-200 rounded-lg"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="password" className="text-sm font-semibold text-slate-900 mb-1.5 block">Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="password"
+                        type={showPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        className="h-11 px-3 pr-10 text-sm bg-slate-50 border-slate-200 rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
-                </div>
 
-                <div>
-                  <Label htmlFor="confirm-password" className="text-base font-semibold text-slate-900 mb-3 block">Confirm Password</Label>
-                  <div className="relative">
-                    <Input
-                      id="confirm-password"
-                      type={showConfirmPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="h-14 px-4 pr-12 text-base bg-slate-50 border-slate-200 rounded-lg"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    >
-                      {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
+                  <div>
+                    <Label htmlFor="confirm-password" className="text-sm font-semibold text-slate-900 mb-1.5 block">Confirm Password</Label>
+                    <div className="relative">
+                      <Input
+                        id="confirm-password"
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="••••••••"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="h-11 px-3 pr-10 text-sm bg-slate-50 border-slate-200 rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
                 <Button
-                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white h-12"
+                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white h-11"
                   onClick={handleEmailSignUp}
                   disabled={!canProceed}
                 >
@@ -218,18 +247,8 @@ export default function Signup() {
               </div>
             )}
 
-            {/* More Options */}
-            <div className="text-center mb-8">
-              <button className="text-xs font-semibold text-slate-500 tracking-wider uppercase hover:text-slate-700">
-                More Options
-              </button>
-            </div>
-
             {/* Footer */}
-            <div className="text-center text-xs text-slate-400">
-              <p className="mb-2">
-                Secure Login with reCAPTCHA subject to Google
-              </p>
+            <div className="text-center text-xs text-slate-400 mt-4">
               <p>
                 <a href="/terms" className="text-slate-500 underline hover:text-slate-700">Terms</a>
                 {' & '}
@@ -238,7 +257,7 @@ export default function Signup() {
             </div>
 
             {/* Already have account link */}
-            <div className="text-center mt-8 pt-6 border-t border-slate-200">
+            <div className="text-center mt-4 pt-4 border-t border-slate-200">
               <a
                 href="/login"
                 className="text-sm text-purple-600 hover:text-purple-700 font-medium"

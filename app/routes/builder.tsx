@@ -28,8 +28,11 @@ export default function Builder() {
   const [siteId, setSiteId] = useState('');
   const [selectedPalette, setSelectedPalette] = useState<string>('purple-blue');
   const [selectedFont, setSelectedFont] = useState<string>('professional-1');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isCreatingAccount, setIsCreatingAccount] = useState(true);
   const [isCompleting, setIsCompleting] = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
@@ -160,7 +163,11 @@ export default function Builder() {
       case 1: return selectedTemplate !== null;
       case 2: return selectedPalette !== null && selectedFont !== null;
       case 3: return siteTitle.trim() !== '' && siteId.trim() !== '' && !siteIdError && !checkingAvailability;
-      case 4: return email.trim() !== '' && password.trim() !== '';
+      case 4:
+        if (isCreatingAccount) {
+          return firstName.trim() !== '' && lastName.trim() !== '' && email.trim() !== '' && password.trim() !== '' && confirmPassword.trim() !== '' && password === confirmPassword;
+        }
+        return email.trim() !== '' && password.trim() !== '';
       default: return false;
     }
   };
@@ -224,15 +231,21 @@ export default function Builder() {
             {/* Step 4: Authentication */}
             {step === 4 && (
               <WizardStep4
+                firstName={firstName}
+                lastName={lastName}
                 email={email}
                 password={password}
+                confirmPassword={confirmPassword}
                 isCreatingAccount={isCreatingAccount}
                 isCompleting={isCompleting}
                 error={error}
                 totalSteps={totalSteps}
                 canProceed={canProceed()}
+                onFirstNameChange={setFirstName}
+                onLastNameChange={setLastName}
                 onEmailChange={setEmail}
                 onPasswordChange={setPassword}
+                onConfirmPasswordChange={setConfirmPassword}
                 onToggleAccountMode={() => setIsCreatingAccount(!isCreatingAccount)}
                 onGoogleSignIn={handleGoogleSignIn}
                 onEmailAuth={handleEmailAuth}

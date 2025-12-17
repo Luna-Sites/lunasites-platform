@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
 import type { Route } from "./+types/sites";
 import { useAuth } from "../contexts/AuthContext";
 import { Search, MoreVertical, ExternalLink, Settings, LogOut, HelpCircle } from 'lucide-react';
@@ -18,11 +19,19 @@ export function meta({}: Route.MetaArgs) {
 
 export default function Sites() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'domains'>('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [websites, setWebsites] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Redirect to login if not authenticated
+  useEffect(() => {
+    if (!user) {
+      navigate('/login');
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     if (user) {
@@ -71,14 +80,12 @@ export default function Sites() {
     window.location.href = "/";
   };
 
+  // Show loading while redirecting
   if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-blue-50/30 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Please sign in to view your sites</h1>
-          <a href="/login" className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-6 py-3 rounded-lg transition-colors inline-block">
-            Sign In
-          </a>
+          <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
         </div>
       </div>
     );
