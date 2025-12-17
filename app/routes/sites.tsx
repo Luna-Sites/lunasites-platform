@@ -427,7 +427,6 @@ export default function Sites() {
         </div>
       </div>
 
-      {/* Right Column - Nebula Image */}
       <div style={{ backgroundImage: `url(${ASSETS.nebulaSitesImg})` }} />
     </div>
   );
