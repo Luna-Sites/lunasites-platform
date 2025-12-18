@@ -4,7 +4,7 @@ services:
     name: lunasites-api
     runtime: node
     rootDir: api
-    buildCommand: yarn install && yarn build
+    buildCommand: yarn install --production=false && yarn build
     startCommand: yarn start
     envVars:
       - key: NODE_ENV
