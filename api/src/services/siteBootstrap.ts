@@ -273,6 +273,7 @@ export async function runMigrations(
     await db.migrate.latest({
       directory: MIGRATIONS_DIR,
       tableName: 'knex_migrations',
+      loadExtensions: ['.js'],
     });
 
     console.log(`[Bootstrap] Migrations completed for: ${dbConfig.database}`);
