@@ -1,0 +1,37 @@
+services:
+  # Backend - Express API
+  - type: web
+    name: lunasites-api
+    runtime: node
+    rootDir: api
+    buildCommand: yarn install && yarn build
+    startCommand: yarn start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8000
+      - key: CORS_ORIGINS
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: RENDER_API_KEY
+        sync: false
+      - key: RENDER_OWNER_ID
+        sync: false
+      - key: SHARED_DATABASE_URL
+        sync: false
+      - key: BASE_DOMAIN
+        sync: false
+      - key: MULTI_TENANT
+        value: "true"
+      - key: MULTI_TENANT_WORKER_URL
+        sync: false
+      - key: LUNACMS_REPO_URL
+        sync: false
+      - key: LUNACMS_REPO_BRANCH
+        value: main
