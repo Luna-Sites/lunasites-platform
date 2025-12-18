@@ -26,6 +26,8 @@ services:
         sync: false
       - key: SHARED_DATABASE_URL
         sync: false
+      - key: SHARED_DATABASE_INTERNAL_URL
+        sync: false
       - key: BASE_DOMAIN
         sync: false
       - key: MULTI_TENANT

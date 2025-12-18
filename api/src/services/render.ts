@@ -22,10 +22,15 @@ function parseDatabaseUrl(url: string) {
   const regex = /^postgresql:\/\/([^:]+):([^@]+)@([^:/]+)(?::(\d+))?\/(.+)$/;
   const match = url.match(regex);
   if (!match) throw new Error('Invalid database URL');
+
+  // Convert external hostname to internal (remove .region-postgres.render.com)
+  const externalHost = match[3];
+  const internalHost = externalHost.replace(/\.[^.]+\.render\.com$/, '');
+
   return {
     user: match[1],
     password: match[2],
-    host: match[3],
+    host: internalHost,
     port: match[4] || '5432',
     database: match[5],
   };

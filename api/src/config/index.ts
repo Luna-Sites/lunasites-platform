@@ -27,6 +27,7 @@ export const config = {
 
   // Shared database connection string
   sharedDatabaseUrl: process.env.SHARED_DATABASE_URL || '',
+  sharedDatabaseInternalUrl: process.env.SHARED_DATABASE_INTERNAL_URL || '',
 
   // Base domain for sites
   baseDomain: process.env.BASE_DOMAIN || 'luna-sites.com',
