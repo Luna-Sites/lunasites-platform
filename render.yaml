@@ -3,6 +3,7 @@ services:
   - type: web
     name: lunasites-api
     runtime: node
+    region: frankfurt
     rootDir: api
     buildCommand: yarn install --production=false && yarn build
     startCommand: yarn start
