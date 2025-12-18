@@ -6,7 +6,7 @@
  */
 
 import knex, { Knex } from 'knex';
-import { readFileSync, existsSync, mkdirSync, readdirSync, statSync } from 'fs';
+import { readFileSync, existsSync, readdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import _ from 'lodash';
@@ -218,9 +218,6 @@ interface DatabaseConfig {
   password: string;
 }
 
-// Base blobs directory (same as Render config)
-const BASE_BLOBS_DIR = process.env.BLOBS_DIR || '/tmp/blobs';
-
 interface BootstrapOptions {
   siteId: string;
 }
@@ -251,23 +248,12 @@ function createKnexInstance(dbConfig: DatabaseConfig): Knex {
  */
 export async function runMigrations(
   dbConfig: DatabaseConfig,
-  options: BootstrapOptions
+  _options: BootstrapOptions
 ): Promise<void> {
   const db = createKnexInstance(dbConfig);
-  // Each site gets its own blobs directory
-  const siteBlobsDir = join(BASE_BLOBS_DIR, options.siteId);
 
   try {
     console.log(`[Bootstrap] Running migrations for database: ${dbConfig.database}`);
-    console.log(`[Bootstrap] Blobs directory: ${siteBlobsDir}`);
-
-    // Create site-specific blobs directory
-    if (!existsSync(siteBlobsDir)) {
-      mkdirSync(siteBlobsDir, { recursive: true });
-    }
-
-    // Set blobsDir in environment for migrations that use process.cwd()/config
-    process.env.SITE_BLOBS_DIR = siteBlobsDir;
 
     // Run migrations using Knex's migrate API
     await db.migrate.latest({

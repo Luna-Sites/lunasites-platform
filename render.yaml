@@ -40,5 +40,3 @@ services:
         value: main
       - key: RENDER_WORKER_SERVICE_ID
         sync: false
-      - key: BLOBS_DIR
-        value: /tmp/blobs
