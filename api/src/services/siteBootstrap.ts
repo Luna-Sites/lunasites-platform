@@ -404,10 +404,14 @@ async function seedProfile(trx: Knex.Transaction, profilePath: string, options: 
               case 'date': table.dateTime(field).index(); break;
               case 'string[]': table.specificType(field, 'character varying(255)[]').index(); break;
               case 'uuid[]': table.specificType(field, 'uuid[]').index(); break;
-              case 'text': table.specificType(field, 'tsvector').index(undefined, 'GIN'); break;
+              case 'text': table.specificType(field, 'tsvector'); break;
               default: console.log(`[Bootstrap] Unhandled index type: ${index.type}`);
             }
           });
+          // Add GIN index for tsvector columns
+          if (index.type === 'text') {
+            await trx.raw(`CREATE INDEX IF NOT EXISTS catalog_${field}_gin_idx ON catalog USING GIN ("${field}")`);
+          }
         } catch (err: any) {
           if (!err.message?.includes('already exists')) {
             console.warn(`[Bootstrap] Error adding catalog column ${field}:`, err.message);
