@@ -52,14 +52,18 @@ export default function EditSite() {
   // Handle messages from iframe (for SSO)
   const handleIframeMessage = useCallback(
     async (event: MessageEvent) => {
+      console.log('[Dashboard] Message received:', event.data?.type, 'from:', event.origin);
       if (!site) return;
 
       // Check if it's a ready message from the iframe
       if (event.data?.type === 'LUNA_AUTH_READY') {
+        console.log('[Dashboard] LUNA_AUTH_READY received, sending token...');
         try {
           const firebaseUser = auth.currentUser;
+          console.log('[Dashboard] Firebase user:', !!firebaseUser);
           if (firebaseUser) {
             const token = await firebaseUser.getIdToken();
+            console.log('[Dashboard] Sending LUNA_AUTH to:', `https://${site.domain}`);
             iframeRef.current?.contentWindow?.postMessage(
               {
                 type: 'LUNA_AUTH',
@@ -75,6 +79,7 @@ export default function EditSite() {
 
       // Handle auth response
       if (event.data?.type === 'LUNA_AUTH_RESPONSE') {
+        console.log('[Dashboard] LUNA_AUTH_RESPONSE:', event.data);
         setIframeLoading(false);
         if (!event.data.success) {
           console.error('Iframe auth failed:', event.data.error);
