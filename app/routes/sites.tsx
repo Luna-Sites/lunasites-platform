@@ -53,6 +53,7 @@ export default function Sites() {
         setWebsites(
           sites.map((site: any, index: number) => ({
             id: site.id || index + 1,
+            siteId: site.siteId,
             title: site.name || 'Untitled Website',
             url: site.domain || `${site.siteId}.lunaweb.app`,
             thumbnail: `/wizard-assets/cadb01d5f39257b9bed043b110f35314dd1c3305.png`, // Placeholder
@@ -91,6 +92,10 @@ export default function Sites() {
 
   const handleGoHome = () => {
     window.location.href = '/';
+  };
+
+  const handleEditSite = (siteId: string) => {
+    navigate(`/sites/${siteId}/edit`);
   };
 
   // Show loading while redirecting
@@ -144,8 +149,7 @@ export default function Sites() {
               <button onClick={handleGoHome} className="cursor-pointer">
                 <img src={Logo} alt="Luna Sites" className="w-[130px]" />
               </button>
-
-                          </div>
+            </div>
 
             <div className="flex items-center gap-4">
               <div className="relative group">
@@ -397,7 +401,9 @@ export default function Sites() {
                       {/* Action Button */}
                       <Button
                         onClick={
-                          isPlaceholder ? handleCreateWebsite : undefined
+                          isPlaceholder
+                            ? handleCreateWebsite
+                            : () => handleEditSite(site.siteId)
                         }
                         className="bg-gradient-to-r from-[#5A318F] to-[#D920B7] hover:from-[#4A2875] hover:to-[#C01AA3] text-white mt-6 px-4 py-2 text-sm w-[200px] mx-auto"
                       >

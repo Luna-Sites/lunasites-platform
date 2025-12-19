@@ -220,6 +220,9 @@ interface DatabaseConfig {
 
 interface BootstrapOptions {
   siteId: string;
+  firebaseUid?: string;
+  ownerEmail?: string;
+  ownerName?: string;
 }
 
 /**
@@ -763,7 +766,61 @@ export async function bootstrapSite(
   // Then seed the database
   await runSeed(dbConfig);
 
+  // Create owner user with Firebase UID if provided
+  if (options.firebaseUid) {
+    await createOwnerUser(dbConfig, options);
+  }
+
   console.log(`[Bootstrap] Bootstrap completed for: ${dbConfig.database}`);
+}
+
+/**
+ * Create owner user with Firebase UID for SSO authentication
+ */
+async function createOwnerUser(
+  dbConfig: DatabaseConfig,
+  options: BootstrapOptions
+): Promise<void> {
+  const db = createKnexInstance(dbConfig);
+
+  try {
+    const userId = options.firebaseUid!;
+    const email = options.ownerEmail || `${userId}@firebase.local`;
+    const fullname = options.ownerName || 'Site Owner';
+
+    console.log(`[Bootstrap] Creating owner user: ${userId}`);
+
+    // Check if user already exists
+    const existingUser = await db('user').where('id', userId).first();
+    if (existingUser) {
+      console.log(`[Bootstrap] Owner user already exists: ${userId}`);
+      return;
+    }
+
+    // Create owner user (no password - Firebase auth only)
+    await db('user').insert({
+      id: userId,
+      fullname,
+      email,
+      password: '', // Empty password - Firebase SSO only
+    });
+
+    // Assign Manager role to owner
+    await db('user_role').insert({
+      user: userId,
+      role: 'Manager',
+    }).onConflict(['user', 'role']).ignore();
+
+    // Also assign Site Administrator role
+    await db('user_role').insert({
+      user: userId,
+      role: 'Site Administrator',
+    }).onConflict(['user', 'role']).ignore();
+
+    console.log(`[Bootstrap] Owner user created: ${userId} with Manager and Site Administrator roles`);
+  } finally {
+    await db.destroy();
+  }
 }
 
 export default {

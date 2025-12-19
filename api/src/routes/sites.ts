@@ -130,8 +130,10 @@ router.post(
         domain,
       });
 
-      // Deploy site (async)
-      deploySite(site.id, site_id, name, userId).catch((error: Error) => {
+      // Deploy site (async) - pass Firebase user info for owner creation
+      const ownerEmail = req.user!.email;
+      const ownerName = req.user!.name || name;
+      deploySite(site.id, site_id, name, userId, ownerEmail, ownerName).catch((error: Error) => {
         console.error('Site deployment failed:', error);
         sitesService.setSiteError(site.id);
       });
@@ -202,7 +204,9 @@ async function deploySite(
   docId: string,
   siteId: string,
   siteName: string,
-  userId: string
+  userId: string,
+  ownerEmail?: string,
+  ownerName?: string
 ) {
   console.log(`Starting deployment for site: ${siteId} (multi-tenant: ${MULTI_TENANT})`);
 
@@ -238,7 +242,7 @@ async function deploySite(
         user: dbInfo.user,
         password: dbInfo.password,
       },
-      { siteId }
+      { siteId, firebaseUid: userId, ownerEmail, ownerName }
     );
     console.log(`Bootstrap completed for site: ${siteId}`);
 
