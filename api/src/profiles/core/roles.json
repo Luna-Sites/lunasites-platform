@@ -39,7 +39,7 @@
     {
       "id": "Administrator",
       "title:i18n": "Administrator",
-      "permissions": ["Add", "Review", "Submit", "Manage Users", "Manage Site"]
+      "permissions": ["View", "Add", "Modify", "Review", "Submit", "Manage Users", "Manage Site"]
     }
   ]
 }
