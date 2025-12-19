@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import type { Route } from './+types/sites.$siteId.edit';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowLeft, ExternalLink, X } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { api } from '../lib/api';
 
-export function meta({ params }: Route.MetaArgs) {
+export function meta() {
   return [
     { title: `Edit Site - Luna Sites` },
     { name: 'description', content: 'Edit your Luna Sites website' },
