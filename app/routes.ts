@@ -7,6 +7,7 @@ export default [
   route("/login", "routes/login.tsx"),
   route("/signup", "routes/signup.tsx"),
   route("/sites", "routes/sites.tsx"),
+  route("/sites/:siteId/edit", "routes/sites.$siteId.edit.tsx"),
   route("/billing", "routes/billing.tsx"),
   route("/profile", "routes/profile.tsx")
 ] satisfies RouteConfig;
