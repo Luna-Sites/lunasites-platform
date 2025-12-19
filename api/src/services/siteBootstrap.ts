@@ -805,19 +805,13 @@ async function createOwnerUser(
       password: '', // Empty password - Firebase SSO only
     });
 
-    // Assign Manager role to owner
+    // Assign Administrator role to owner (full site access)
     await db('user_role').insert({
       user: userId,
-      role: 'Manager',
+      role: 'Administrator',
     }).onConflict(['user', 'role']).ignore();
 
-    // Also assign Site Administrator role
-    await db('user_role').insert({
-      user: userId,
-      role: 'Site Administrator',
-    }).onConflict(['user', 'role']).ignore();
-
-    console.log(`[Bootstrap] Owner user created: ${userId} with Manager and Site Administrator roles`);
+    console.log(`[Bootstrap] Owner user created: ${userId} with Administrator role`);
   } finally {
     await db.destroy();
   }
