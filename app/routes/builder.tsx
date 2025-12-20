@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { Route } from "./+types/builder";
 import { ArrowRight, ArrowLeft } from 'lucide-react';
 import { Button } from "../components/ui/button";
@@ -43,10 +43,40 @@ export default function Builder() {
   const [selectedInputStyle, setSelectedInputStyle] = useState<string>('rounded');
   const [error, setError] = useState<string | null>(null);
   const [siteIdError, setSiteIdError] = useState<string | null>(null);
+  const [createdSiteId, setCreatedSiteId] = useState<string | null>(null);
+  const [siteStatus, setSiteStatus] = useState<string>('creating');
 
   // If user is logged in, skip auth step (3 steps instead of 4)
   const isLoggedIn = !!user;
   const totalSteps = isLoggedIn ? 3 : 4;
+
+  // Poll site status after creation
+  useEffect(() => {
+    if (!createdSiteId || !isCompleting) return;
+
+    const pollStatus = async () => {
+      try {
+        const site = await api.getSite(createdSiteId);
+        setSiteStatus(site.status);
+
+        if (site.status === 'active') {
+          // Site is ready, redirect to edit page
+          window.location.href = `/sites/${createdSiteId}/edit`;
+        } else if (site.status === 'error') {
+          setError('Failed to create site. Please try again.');
+          setIsCompleting(false);
+        }
+      } catch (err) {
+        console.error('Error polling site status:', err);
+      }
+    };
+
+    // Poll immediately and then every 2 seconds
+    pollStatus();
+    const interval = setInterval(pollStatus, 2000);
+
+    return () => clearInterval(interval);
+  }, [createdSiteId, isCompleting]);
 
 
   const handleTemplateSelect = (templateId: string) => {
@@ -95,6 +125,7 @@ export default function Builder() {
 
   const handleCreateSite = async () => {
     try {
+      setSiteStatus('creating');
       const result = await api.createSite({
         site_id: siteId,
         name: siteTitle,
@@ -103,7 +134,9 @@ export default function Builder() {
       });
 
       if (result.success) {
-        window.location.href = "/sites";
+        // Start polling for site status
+        setCreatedSiteId(siteId);
+        setSiteStatus('pending');
       } else {
         throw new Error(result.message || 'Failed to create site');
       }
@@ -145,6 +178,21 @@ export default function Builder() {
       console.error('Email auth error:', error);
       setError(error.message || 'Authentication failed');
       setIsCompleting(false);
+    }
+  };
+
+  const getStatusMessage = () => {
+    switch (siteStatus) {
+      case 'creating':
+        return { title: 'Creating your site...', subtitle: 'Setting everything up' };
+      case 'pending':
+        return { title: 'Preparing your site...', subtitle: 'Almost there' };
+      case 'deploying':
+        return { title: 'Publishing your site...', subtitle: 'Making it live' };
+      case 'active':
+        return { title: 'Your site is ready!', subtitle: 'Redirecting to editor...' };
+      default:
+        return { title: 'Creating your site...', subtitle: 'This will only take a moment' };
     }
   };
 
@@ -218,17 +266,60 @@ export default function Builder() {
               />
             )}
 
-            {/* Show loading state when creating site for logged-in users */}
-            {isLoggedIn && isCompleting && (
-              <div className="flex-1 flex items-center justify-center">
+            {/* Full-screen loading overlay with moon animation */}
+            {isCompleting && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
                 <div className="text-center">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#5A318F] to-[#D920B7] flex items-center justify-center mx-auto mb-6 animate-pulse">
-                    <ArrowRight className="w-8 h-8 text-white" />
+                  {/* Moon animation */}
+                  <div className="relative w-32 h-32 mx-auto mb-8">
+                    {/* Glow effect */}
+                    <div className="absolute inset-0 rounded-full bg-purple-500/30 blur-xl animate-pulse" />
+                    {/* Rotating orbit */}
+                    <div className="absolute inset-0 animate-spin" style={{ animationDuration: '8s' }}>
+                      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-white/40" />
+                    </div>
+                    {/* Moon icon */}
+                    <div className="absolute inset-0 flex items-center justify-center animate-pulse">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="80"
+                        height="80"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="url(#moonGradient)"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="drop-shadow-lg"
+                      >
+                        <defs>
+                          <linearGradient id="moonGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#A855F7" />
+                            <stop offset="100%" stopColor="#EC4899" />
+                          </linearGradient>
+                        </defs>
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+                      </svg>
+                    </div>
                   </div>
-                  <h3 className="text-xl font-semibold text-slate-900 mb-2">Creating your site...</h3>
-                  <p className="text-slate-600">This will only take a moment</p>
+
+                  {/* Status messages */}
+                  <h3 className="text-2xl font-semibold text-white mb-2">
+                    {getStatusMessage().title}
+                  </h3>
+                  <p className="text-purple-200/80 mb-4">
+                    {getStatusMessage().subtitle}
+                  </p>
+
+                  {/* Progress indicator */}
+                  <div className="flex items-center justify-center gap-2 mt-6">
+                    <div className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
+
                   {error && (
-                    <div className="mt-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+                    <div className="mt-6 p-4 bg-red-500/20 border border-red-500/50 text-red-200 rounded-lg text-sm max-w-md mx-auto">
                       {error}
                     </div>
                   )}
