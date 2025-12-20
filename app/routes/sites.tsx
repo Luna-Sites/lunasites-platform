@@ -139,9 +139,9 @@ export default function Sites() {
   const isPlaceholder = filteredWebsites.length === 0;
 
   return (
-    <div className="min-h-screen bg-white grid grid-cols-1 lg:grid-cols-[1fr_30%]">
-      {/* Left Column - Main Content */}
-      <div className="flex flex-col">
+    <div className="h-screen bg-white grid grid-cols-1 lg:grid-cols-[1fr_30%] overflow-hidden">
+      {/* Left Column - Main Content (scrollable) */}
+      <div className="flex flex-col h-screen overflow-y-auto">
         {/* Header */}
         <header className="border-b border-slate-200 bg-white sticky top-0 z-50">
           <div className="px-6 py-4 flex items-center justify-between">
@@ -417,7 +417,11 @@ export default function Sites() {
           )}
         </div>
       </div>
-      <div style={{ backgroundImage: `url(${ASSETS.nebulaSitesImg})` }} />
+      {/* Right Column - Fixed background image */}
+      <div
+        className="hidden lg:block h-screen bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${ASSETS.nebulaSitesImg})` }}
+      />
     </div>
   );
 }
