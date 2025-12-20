@@ -1,7 +1,9 @@
-import { templates, fontPairs, buttonStyles } from '../../data/wizard-data';
+import { fontPairs, buttonStyles } from '../../data/wizard-data';
+import TemplateIframePreview from './TemplateIframePreview';
 
 interface TemplatePreviewProps {
   selectedTemplate: string | null;
+  sourceSiteId: string | null;
   selectedFont: string;
   selectedButtonStyle: string;
   colors: string[];
@@ -9,6 +11,7 @@ interface TemplatePreviewProps {
 
 export default function TemplatePreview({
   selectedTemplate,
+  sourceSiteId,
   selectedFont,
   selectedButtonStyle,
   colors
@@ -16,6 +19,7 @@ export default function TemplatePreview({
   const currentFont = fontPairs.find(f => f.id === selectedFont);
   const currentButtonStyle = buttonStyles.find(s => s.id === selectedButtonStyle);
 
+  // Blank canvas - show placeholder preview with selected styles
   if (selectedTemplate === 'blank') {
     return (
       <div className="aspect-[16/10] bg-white flex flex-col items-center justify-center p-12">
@@ -68,42 +72,21 @@ export default function TemplatePreview({
     );
   }
 
-  const template = templates.find(t => t.id === selectedTemplate);
+  // Template selected - show interactive iframe preview
+  if (sourceSiteId) {
+    return (
+      <TemplateIframePreview
+        siteId={sourceSiteId}
+        mode="full"
+        className="aspect-[16/10]"
+      />
+    );
+  }
 
+  // Fallback if no sourceSiteId
   return (
-    <div className="relative">
-      <img
-        src={template?.image}
-        alt="Template preview"
-        className="w-full aspect-[16/10] object-cover"
-      />
-      <div
-        className="absolute inset-0 bg-gradient-to-br from-transparent to-black/20"
-        style={{
-          background: `linear-gradient(135deg, ${colors[0]}15 0%, ${colors[1]}25 100%)`
-        }}
-      />
-      <div className="absolute bottom-0 left-0 right-0 p-8 bg-gradient-to-t from-black/60 to-transparent">
-        <div
-          className="text-white mb-4"
-          style={{
-            fontFamily: currentFont?.heading,
-            fontSize: '32px',
-            lineHeight: '1.2'
-          }}
-        >
-          {template?.name}
-        </div>
-        <div className="flex gap-3">
-          {colors.map((color, index) => (
-            <div
-              key={index}
-              className="w-12 h-12 rounded-lg shadow-lg"
-              style={{ backgroundColor: color }}
-            />
-          ))}
-        </div>
-      </div>
+    <div className="aspect-[16/10] bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
+      <p className="text-slate-500">Preview not available</p>
     </div>
   );
 }

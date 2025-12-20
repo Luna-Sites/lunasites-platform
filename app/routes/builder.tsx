@@ -26,6 +26,7 @@ export default function Builder() {
   const [step, setStep] = useState(1);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [selectedTemplateSiteId, setSelectedTemplateSiteId] = useState<string | null>(null);
   const [siteTitle, setSiteTitle] = useState('');
   const [siteId, setSiteId] = useState('');
   const [selectedPalette, setSelectedPalette] = useState<string>('purple-blue');
@@ -79,8 +80,9 @@ export default function Builder() {
   }, [createdSiteId, isCompleting]);
 
 
-  const handleTemplateSelect = (templateId: string) => {
+  const handleTemplateSelect = (templateId: string, sourceSiteId?: string) => {
     setSelectedTemplate(templateId);
+    setSelectedTemplateSiteId(sourceSiteId || null);
     setStep(2);
   };
 
@@ -233,6 +235,7 @@ export default function Builder() {
             {step === 2 && (
               <WizardStep2
                 selectedTemplate={selectedTemplate}
+                selectedTemplateSiteId={selectedTemplateSiteId}
                 selectedPalette={selectedPalette}
                 selectedFont={selectedFont}
                 selectedButtonStyle={selectedButtonStyle}

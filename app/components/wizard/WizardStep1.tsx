@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { ArrowRight, Globe } from 'lucide-react';
 import { getPublicTemplates, type PublicTemplate } from '../../lib/api';
 import WizardProgress from './WizardProgress';
+import TemplateIframePreview from './TemplateIframePreview';
 
 interface WizardStep1Props {
   selectedCategory: string | null;
   onCategoryChange: (category: string | null) => void;
-  onTemplateSelect: (templateId: string) => void;
+  onTemplateSelect: (templateId: string, sourceSiteId?: string) => void;
   totalSteps: number;
 }
 
@@ -86,20 +87,14 @@ export default function WizardStep1({
             {templates.map((template) => (
               <button
                 key={template.id}
-                onClick={() => onTemplateSelect(template.id)}
-                className="group relative overflow-hidden rounded-2xl bg-white shadow-lg hover:shadow-2xl transition-all hover:scale-105"
+                onClick={() => onTemplateSelect(template.id, template.sourceSiteId)}
+                className="group relative overflow-hidden rounded-2xl bg-white shadow-lg hover:shadow-2xl transition-all hover:scale-[1.02]"
               >
-                <div className="aspect-[16/10] overflow-hidden bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
-                  {template.thumbnailUrl ? (
-                    <img
-                      src={template.thumbnailUrl}
-                      alt={template.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
-                  ) : (
-                    <Globe className="w-12 h-12 text-purple-300" />
-                  )}
-                </div>
+                <TemplateIframePreview
+                  siteId={template.sourceSiteId}
+                  mode="card"
+                  className="aspect-[16/10]"
+                />
                 <div className="p-6 text-left">
                   <div className="text-slate-900 font-medium mb-1">{template.name}</div>
                   <div className="text-sm text-slate-600">{template.description || 'No description'}</div>

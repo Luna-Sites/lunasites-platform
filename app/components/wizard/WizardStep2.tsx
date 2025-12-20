@@ -4,6 +4,7 @@ import { ASSETS } from '../../data/wizard-data';
 
 interface WizardStep2Props {
   selectedTemplate: string | null;
+  selectedTemplateSiteId: string | null;
   selectedPalette: string;
   selectedFont: string;
   selectedButtonStyle: string;
@@ -21,6 +22,7 @@ interface WizardStep2Props {
 
 export default function WizardStep2({
   selectedTemplate,
+  selectedTemplateSiteId,
   selectedPalette,
   selectedFont,
   selectedButtonStyle,
@@ -49,6 +51,7 @@ export default function WizardStep2({
         <div className="rounded-2xl overflow-hidden shadow-2xl border-2 border-slate-200">
           <TemplatePreview
             selectedTemplate={selectedTemplate}
+            sourceSiteId={selectedTemplateSiteId}
             selectedFont={selectedFont}
             selectedButtonStyle={selectedButtonStyle}
             colors={currentColors}
