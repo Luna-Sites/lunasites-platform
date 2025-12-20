@@ -264,6 +264,7 @@ export async function initTemplatesTable(): Promise<void> {
 
 /**
  * Create a template from site content
+ * Templates now just store reference to source site - database is cloned on site creation
  */
 export async function createTemplate(params: {
   name: string;
@@ -272,7 +273,6 @@ export async function createTemplate(params: {
   sourceSiteId: string;
   userId: string;
   isPublic?: boolean;
-  documents: object;
 }): Promise<TemplateRecord> {
   const pool = getMasterPool();
 
@@ -287,7 +287,7 @@ export async function createTemplate(params: {
       params.sourceSiteId,
       params.userId,
       params.isPublic || false,
-      JSON.stringify(params.documents),
+      JSON.stringify({}), // No longer storing documents - we clone the database directly
     ]
   );
 

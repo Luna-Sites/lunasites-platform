@@ -6,8 +6,6 @@
 import { Router, Response } from 'express';
 import { AuthenticatedRequest, authMiddleware, adminMiddleware } from '../middleware/auth.js';
 import * as masterDbService from '../services/masterDb.js';
-import * as sitesService from '../services/sites.js';
-import knex from 'knex';
 
 const router = Router();
 
@@ -113,6 +111,7 @@ router.get(
 
 /**
  * Create template from existing site (ADMIN ONLY)
+ * Templates now just store reference to source site - database is cloned on site creation
  */
 router.post(
   '/',
@@ -127,23 +126,19 @@ router.post(
         return res.status(400).json({ error: 'siteId and name are required' });
       }
 
-      // Get site database connection
+      // Verify site exists
       const dbConfig = await masterDbService.getMasterSiteDbConnection(siteId);
       if (!dbConfig) {
-        return res.status(404).json({ error: 'Site database not found' });
+        return res.status(404).json({ error: 'Site not found' });
       }
 
-      // Export documents from site
-      const documents = await exportSiteDocuments(dbConfig);
-
-      // Create template
+      // Create template (just stores reference to source site)
       const template = await masterDbService.createTemplate({
         name,
         description,
         sourceSiteId: siteId,
         userId,
         isPublic: isPublic || false,
-        documents,
       });
 
       return res.status(201).json({
@@ -217,129 +212,5 @@ router.delete(
     }
   }
 );
-
-/**
- * Export all documents from a site's database
- */
-async function exportSiteDocuments(dbConfig: {
-  host: string;
-  port: number;
-  database: string;
-  user: string;
-  password: string;
-}): Promise<object[]> {
-  const db = knex({
-    client: 'pg',
-    connection: {
-      host: dbConfig.host,
-      port: dbConfig.port,
-      database: dbConfig.database,
-      user: dbConfig.user,
-      password: dbConfig.password,
-      ssl: dbConfig.host.includes('render.com') ? { rejectUnauthorized: false } : false,
-    },
-  });
-
-  try {
-    const documents = await db('document')
-      .select('*')
-      .orderBy('path', 'asc');
-
-    return documents.map((doc: any) => ({
-      uuid: doc.uuid,
-      parent: doc.parent,
-      id: doc.id,
-      path: doc.path,
-      type: doc.type,
-      position_in_parent: doc.position_in_parent,
-      version: doc.version,
-      json: doc.json,
-      language: doc.language,
-      workflow_state: doc.workflow_state,
-      owner: null,
-      created: null,
-      modified: null,
-    }));
-  } finally {
-    await db.destroy();
-  }
-}
-
-/**
- * Import documents from template to a site's database
- */
-export async function importTemplateDocuments(
-  dbConfig: {
-    host: string;
-    port: number;
-    database: string;
-    user: string;
-    password: string;
-  },
-  documents: any[],
-  ownerId: string
-): Promise<void> {
-  const db = knex({
-    client: 'pg',
-    connection: {
-      host: dbConfig.host,
-      port: dbConfig.port,
-      database: dbConfig.database,
-      user: dbConfig.user,
-      password: dbConfig.password,
-      ssl: dbConfig.host.includes('render.com') ? { rejectUnauthorized: false } : false,
-    },
-  });
-
-  try {
-    // Delete existing documents (template replaces bootstrap defaults)
-    // Keep users table intact
-    await db('document').whereNot('type', 'users').del();
-    console.log(`[Templates] Cleared existing documents`);
-
-    const uuidMap = new Map<string, string>();
-    const crypto = await import('crypto');
-
-    for (const doc of documents) {
-      const newUuid = crypto.randomUUID();
-      uuidMap.set(doc.uuid, newUuid);
-    }
-
-    const now = new Date().toISOString();
-
-    for (const doc of documents) {
-      // Skip users document from template (keep the one created by bootstrap)
-      if (doc.type === 'users') {
-        continue;
-      }
-
-      const newUuid = uuidMap.get(doc.uuid)!;
-      const newParent = doc.parent ? uuidMap.get(doc.parent) : null;
-
-      await db('document').insert({
-        uuid: newUuid,
-        parent: newParent,
-        id: doc.id,
-        path: doc.path,
-        type: doc.type,
-        position_in_parent: doc.position_in_parent,
-        version: doc.version || 0,
-        json: typeof doc.json === 'string' ? doc.json : JSON.stringify(doc.json || {}),
-        owner: ownerId,
-        created: now,
-        modified: now,
-        language: doc.language || 'en',
-        workflow_state: doc.workflow_state || 'published',
-        workflow_history: JSON.stringify([]),
-        lock: JSON.stringify({ locked: false, stealable: true }),
-        translation_group: newUuid,
-      });
-    }
-
-    console.log(`[Templates] Imported ${documents.length} documents`);
-  } finally {
-    await db.destroy();
-  }
-}
 
 export default router;

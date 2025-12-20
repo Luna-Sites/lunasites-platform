@@ -5,7 +5,6 @@ import * as renderService from '../services/render.js';
 import * as databaseService from '../services/database.js';
 import * as masterDbService from '../services/masterDb.js';
 import * as siteBootstrap from '../services/siteBootstrap.js';
-import { importTemplateDocuments } from './templates.js';
 import { config } from '../config/index.js';
 
 const router = Router();
@@ -212,11 +211,60 @@ async function deploySite(
 ) {
   console.log(`Starting deployment for site: ${siteId} (multi-tenant: ${MULTI_TENANT}, template: ${templateId || 'none'})`);
 
-  // Create database for this site
-  console.log(`Creating database for site: ${siteId}`);
-  const databaseUrl = await databaseService.createDatabase(siteId);
-  const dbInfo = databaseService.parseDatabaseUrl(databaseUrl);
-  console.log(`Database created for site: ${siteId}`);
+  let databaseUrl: string;
+  let dbInfo: { host: string; port: string; database: string; user: string; password: string };
+
+  // Check if we should clone from a template
+  if (templateId) {
+    const template = await masterDbService.getTemplateById(templateId);
+    if (template && template.source_site_id) {
+      // Clone database from source site
+      console.log(`Cloning database from ${template.source_site_id} for site: ${siteId}`);
+      databaseUrl = await databaseService.cloneDatabase(template.source_site_id, siteId);
+      dbInfo = databaseService.parseDatabaseUrl(databaseUrl);
+      console.log(`Database cloned for site: ${siteId}`);
+
+      // Update owner to new user
+      console.log(`Updating owner for site: ${siteId}`);
+      await databaseService.updateDatabaseOwner(siteId, userId, ownerEmail, ownerName);
+      console.log(`Owner updated for site: ${siteId}`);
+    } else {
+      // Template not found or no source site, fall back to normal creation
+      console.log(`Template ${templateId} not found, creating empty database`);
+      databaseUrl = await databaseService.createDatabase(siteId);
+      dbInfo = databaseService.parseDatabaseUrl(databaseUrl);
+
+      await siteBootstrap.bootstrapSite(
+        {
+          host: dbInfo.host,
+          port: parseInt(dbInfo.port),
+          database: dbInfo.database,
+          user: dbInfo.user,
+          password: dbInfo.password,
+        },
+        { siteId, firebaseUid: userId, ownerEmail, ownerName }
+      );
+    }
+  } else {
+    // No template - create new database and bootstrap
+    console.log(`Creating database for site: ${siteId}`);
+    databaseUrl = await databaseService.createDatabase(siteId);
+    dbInfo = databaseService.parseDatabaseUrl(databaseUrl);
+    console.log(`Database created for site: ${siteId}`);
+
+    console.log(`Running bootstrap for site: ${siteId}`);
+    await siteBootstrap.bootstrapSite(
+      {
+        host: dbInfo.host,
+        port: parseInt(dbInfo.port),
+        database: dbInfo.database,
+        user: dbInfo.user,
+        password: dbInfo.password,
+      },
+      { siteId, firebaseUid: userId, ownerEmail, ownerName }
+    );
+    console.log(`Bootstrap completed for site: ${siteId}`);
+  }
 
   if (MULTI_TENANT) {
     // Multi-tenant mode: register in master DB, no Render service needed
@@ -233,54 +281,6 @@ async function deploySite(
       dbUser: dbInfo.user,
       dbPassword: dbInfo.password,
     });
-
-    // Run migrations and seed for the site's database
-    console.log(`Running bootstrap for site: ${siteId}`);
-    await siteBootstrap.bootstrapSite(
-      {
-        host: dbInfo.host,
-        port: parseInt(dbInfo.port),
-        database: dbInfo.database,
-        user: dbInfo.user,
-        password: dbInfo.password,
-      },
-      { siteId, firebaseUid: userId, ownerEmail, ownerName }
-    );
-    console.log(`Bootstrap completed for site: ${siteId}`);
-
-    // If a template was specified, import its documents
-    if (templateId) {
-      console.log(`Importing template ${templateId} for site: ${siteId}`);
-      const template = await masterDbService.getTemplateById(templateId);
-      if (template && template.documents) {
-        const docs = Array.isArray(template.documents) ? template.documents : [];
-        if (docs.length > 0) {
-          await importTemplateDocuments(
-            {
-              host: dbInfo.host,
-              port: parseInt(dbInfo.port),
-              database: dbInfo.database,
-              user: dbInfo.user,
-              password: dbInfo.password,
-            },
-            docs,
-            userId
-          );
-          console.log(`Template documents imported for site: ${siteId}`);
-        }
-      }
-    }
-
-    // Custom domain registration disabled - using wildcard domain on Render
-    // const workerServiceId = process.env.RENDER_WORKER_SERVICE_ID;
-    // if (workerServiceId) {
-    //   try {
-    //     await renderService.addCustomDomain(workerServiceId, domain);
-    //     console.log(`Custom domain ${domain} added to Render`);
-    //   } catch (error) {
-    //     console.error(`Failed to add custom domain: ${error}`);
-    //   }
-    // }
 
     const workerUrl = process.env.MULTI_TENANT_WORKER_URL || `https://${config.baseDomain}`;
     await sitesService.updateSiteRenderInfo(docId, 'multi-tenant', workerUrl);

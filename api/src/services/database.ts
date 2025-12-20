@@ -155,3 +155,120 @@ export async function databaseExists(siteId: string): Promise<boolean> {
     await client.end();
   }
 }
+
+/**
+ * Clone an existing database to create a new site database
+ */
+export async function cloneDatabase(sourceSiteId: string, targetSiteId: string): Promise<string> {
+  const baseInfo = parseConnectionString(config.sharedDatabaseUrl);
+  const sourceDbName = `luna_${sourceSiteId.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+  const targetDbName = `luna_${targetSiteId.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+
+  const client = new Client({
+    host: baseInfo.host,
+    port: baseInfo.port,
+    user: baseInfo.user,
+    password: baseInfo.password,
+    database: baseInfo.database,
+    ssl: baseInfo.host.includes('render.com') ? { rejectUnauthorized: false } : false,
+  });
+
+  try {
+    await client.connect();
+
+    // Terminate connections to source database (required for TEMPLATE)
+    await client.query(`
+      SELECT pg_terminate_backend(pg_stat_activity.pid)
+      FROM pg_stat_activity
+      WHERE pg_stat_activity.datname = $1
+      AND pid <> pg_backend_pid()
+    `, [sourceDbName]);
+
+    // Check if target already exists
+    const checkResult = await client.query(
+      'SELECT 1 FROM pg_database WHERE datname = $1',
+      [targetDbName]
+    );
+
+    if (checkResult.rows.length > 0) {
+      // Drop existing target database
+      await client.query(`DROP DATABASE "${targetDbName}"`);
+    }
+
+    // Clone database using TEMPLATE
+    await client.query(`CREATE DATABASE "${targetDbName}" TEMPLATE "${sourceDbName}"`);
+    console.log(`Cloned database ${sourceDbName} to ${targetDbName}`);
+
+    // Return connection string for new database
+    const newDbInfo = { ...baseInfo, database: targetDbName };
+    return buildConnectionString(newDbInfo);
+  } finally {
+    await client.end();
+  }
+}
+
+/**
+ * Update owner in a cloned database
+ */
+export async function updateDatabaseOwner(
+  siteId: string,
+  newOwnerId: string,
+  ownerEmail?: string,
+  ownerName?: string
+): Promise<void> {
+  const baseInfo = parseConnectionString(config.sharedDatabaseUrl);
+  const dbName = `luna_${siteId.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+
+  const client = new Client({
+    host: baseInfo.host,
+    port: baseInfo.port,
+    user: baseInfo.user,
+    password: baseInfo.password,
+    database: dbName,
+    ssl: baseInfo.host.includes('render.com') ? { rejectUnauthorized: false } : false,
+  });
+
+  try {
+    await client.connect();
+
+    // Get current user id (from template)
+    const oldUserResult = await client.query('SELECT id FROM "user" LIMIT 1');
+    const oldUserId = oldUserResult.rows[0]?.id;
+
+    if (oldUserId) {
+      // Update user table with new owner
+      await client.query(`
+        UPDATE "user" SET id = $1, email = $2, fullname = $3 WHERE id = $4
+      `, [newOwnerId, ownerEmail || '', ownerName || '', oldUserId]);
+
+      // Update document owner references
+      await client.query(`
+        UPDATE document SET owner = $1 WHERE owner = $2
+      `, [newOwnerId, oldUserId]);
+
+      // Update user_role references
+      await client.query(`
+        UPDATE user_role SET "user" = $1 WHERE "user" = $2
+      `, [newOwnerId, oldUserId]);
+
+      // Update user_group references
+      await client.query(`
+        UPDATE user_group SET "user" = $1 WHERE "user" = $2
+      `, [newOwnerId, oldUserId]);
+
+      // Update user_role_document references
+      await client.query(`
+        UPDATE user_role_document SET "user" = $1 WHERE "user" = $2
+      `, [newOwnerId, oldUserId]);
+
+      // Update version actor references
+      await client.query(`
+        UPDATE version SET actor = $1 WHERE actor = $2
+      `, [newOwnerId, oldUserId]);
+
+      console.log(`Updated owner from ${oldUserId} to ${newOwnerId} in ${dbName}`);
+    }
+  } finally {
+    await client.end();
+  }
+}
