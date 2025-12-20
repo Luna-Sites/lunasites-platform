@@ -292,6 +292,11 @@ export async function importTemplateDocuments(
   });
 
   try {
+    // Delete existing documents (template replaces bootstrap defaults)
+    // Keep users table intact
+    await db('document').whereNot('type', 'users').del();
+    console.log(`[Templates] Cleared existing documents`);
+
     const uuidMap = new Map<string, string>();
     const crypto = await import('crypto');
 
@@ -303,6 +308,11 @@ export async function importTemplateDocuments(
     const now = new Date().toISOString();
 
     for (const doc of documents) {
+      // Skip users document from template (keep the one created by bootstrap)
+      if (doc.type === 'users') {
+        continue;
+      }
+
       const newUuid = uuidMap.get(doc.uuid)!;
       const newParent = doc.parent ? uuidMap.get(doc.parent) : null;
 
@@ -323,7 +333,7 @@ export async function importTemplateDocuments(
         workflow_history: JSON.stringify([]),
         lock: JSON.stringify({ locked: false, stealable: true }),
         translation_group: newUuid,
-      }).onConflict('path').merge();
+      });
     }
 
     console.log(`[Templates] Imported ${documents.length} documents`);

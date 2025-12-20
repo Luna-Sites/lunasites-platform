@@ -7,8 +7,8 @@ import {
   onAuthStateChanged,
   signInWithPopup
 } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
-import { auth, googleProvider, db } from '../lib/firebase';
+import { auth, googleProvider } from '../lib/firebase';
+import { api } from '../lib/api';
 
 interface AuthContextType {
   user: User | null;
@@ -44,22 +44,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setUser(user);
 
       if (user) {
-        // Fetch user role from Firestore
+        // Fetch user role from API (uses Firebase Admin SDK on backend)
         try {
-          console.log('[AuthContext] Fetching role for UID:', user.uid);
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          console.log('[AuthContext] Document exists:', userDoc.exists());
-          if (userDoc.exists()) {
-            const data = userDoc.data();
-            console.log('[AuthContext] Document data:', data);
-            console.log('[AuthContext] Role value:', data?.role);
-            setUserRole(data?.role || null);
-          } else {
-            console.log('[AuthContext] No document found for user');
-            setUserRole(null);
-          }
+          const userInfo = await api.getMe();
+          setUserRole(userInfo.role);
         } catch (error) {
-          console.error('[AuthContext] Error fetching user role:', error);
+          console.error('Error fetching user role:', error);
           setUserRole(null);
         }
       } else {
