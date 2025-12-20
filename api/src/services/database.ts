@@ -286,7 +286,7 @@ export async function updateDatabaseOwner(
       // Log state BEFORE delete
       const beforeUsers = await client.query('SELECT * FROM "user"');
       const beforeRoles = await client.query('SELECT * FROM user_role');
-      const beforeDocs = await client.query('SELECT uuid, id, title, parent FROM document LIMIT 10');
+      const beforeDocs = await client.query('SELECT uuid, id, parent, owner FROM document LIMIT 10');
       console.log(`[DB Update] BEFORE DELETE - Database: ${dbName}`);
       console.log(`[DB Update] BEFORE Users:`, beforeUsers.rows);
       console.log(`[DB Update] BEFORE User roles:`, beforeRoles.rows);
@@ -299,7 +299,7 @@ export async function updateDatabaseOwner(
       // Log state AFTER delete
       const afterUsers = await client.query('SELECT * FROM "user"');
       const afterRoles = await client.query('SELECT * FROM user_role');
-      const afterDocs = await client.query('SELECT uuid, id, title, parent FROM document LIMIT 10');
+      const afterDocs = await client.query('SELECT uuid, id, parent, owner FROM document LIMIT 10');
       console.log(`[DB Update] AFTER DELETE - Database: ${dbName}`);
       console.log(`[DB Update] AFTER Users:`, afterUsers.rows);
       console.log(`[DB Update] AFTER User roles:`, afterRoles.rows);
