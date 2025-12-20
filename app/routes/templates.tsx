@@ -40,6 +40,9 @@ export default function Templates() {
 
   const isAdmin = userRole === 'admin';
 
+  // Debug - remove after testing
+  console.log('userRole:', userRole, 'isAdmin:', isAdmin);
+
   useEffect(() => {
     if (!user) {
       navigate('/login');
@@ -169,6 +172,11 @@ export default function Templates() {
 
       {/* Content */}
       <div className="px-6 py-8 max-w-7xl mx-auto">
+        {/* Debug banner - remove after testing */}
+        <div className="mb-4 p-3 bg-yellow-100 border border-yellow-300 rounded-lg text-sm">
+          <strong>Debug:</strong> userRole = "{userRole}" | isAdmin = {isAdmin ? 'true' : 'false'} | UID = {user?.uid}
+        </div>
+
         {!isAdmin && (
           <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-blue-700 text-sm">
