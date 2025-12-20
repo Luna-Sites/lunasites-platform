@@ -46,14 +46,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (user) {
         // Fetch user role from Firestore
         try {
+          console.log('[AuthContext] Fetching role for UID:', user.uid);
           const userDoc = await getDoc(doc(db, 'users', user.uid));
+          console.log('[AuthContext] Document exists:', userDoc.exists());
           if (userDoc.exists()) {
-            setUserRole(userDoc.data()?.role || null);
+            const data = userDoc.data();
+            console.log('[AuthContext] Document data:', data);
+            console.log('[AuthContext] Role value:', data?.role);
+            setUserRole(data?.role || null);
           } else {
+            console.log('[AuthContext] No document found for user');
             setUserRole(null);
           }
         } catch (error) {
-          console.error('Error fetching user role:', error);
+          console.error('[AuthContext] Error fetching user role:', error);
           setUserRole(null);
         }
       } else {
