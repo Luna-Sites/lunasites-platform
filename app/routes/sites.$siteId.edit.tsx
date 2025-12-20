@@ -135,36 +135,35 @@ export default function EditSite() {
 
   return (
     <div className="fixed inset-0 z-[100] bg-white flex flex-col">
-      {/* Editor Header */}
-      <header className="h-14 border-b border-slate-200 bg-white flex items-center justify-between px-4 shrink-0">
-        <div className="flex items-center gap-4">
+      {/* Editor Header - minimal purple gradient bar */}
+      <header className="h-7 bg-gradient-to-r from-purple-600 to-indigo-600 flex items-center justify-between px-3 shrink-0">
+        <div className="flex items-center gap-2">
           <button
             onClick={handleBack}
-            className="flex items-center gap-2 text-slate-600 hover:text-slate-900 transition-colors"
+            className="flex items-center gap-1 text-purple-200 hover:text-white transition-colors text-xs"
           >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">Back to Dashboard</span>
+            <ArrowLeft className="w-3 h-3" />
+            <span>Dashboard</span>
           </button>
-          <div className="h-6 w-px bg-slate-200" />
-          <span className="text-slate-500 text-sm">
-            Editing: <span className="text-slate-900 font-medium">{site.name}</span>
+          <div className="h-3 w-px bg-purple-400/30" />
+          <span className="text-purple-200/70 text-xs">
+            {site.name}
           </span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <a
             href={`https://${site.domain}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-purple-600 hover:text-purple-700 flex items-center gap-1"
+            className="text-purple-200 hover:text-white transition-colors"
           >
-            View Site
             <ExternalLink className="w-3 h-3" />
           </a>
           <button
             onClick={handleBack}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+            className="text-purple-200 hover:text-white transition-colors"
           >
-            <X className="w-5 h-5 text-slate-500" />
+            <X className="w-3 h-3" />
           </button>
         </div>
       </header>
