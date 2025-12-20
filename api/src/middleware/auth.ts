@@ -14,7 +14,7 @@ if (!admin.apps.length) {
 }
 
 export interface AuthenticatedRequest extends Request {
-  user?: admin.auth.DecodedIdToken;
+  user?: admin.auth.DecodedIdToken & { role?: string };
 }
 
 export async function authMiddleware(
@@ -37,5 +37,37 @@ export async function authMiddleware(
   } catch (error) {
     console.error('Auth error:', error);
     return res.status(401).json({ error: 'Invalid token' });
+  }
+}
+
+/**
+ * Admin middleware - checks if user has admin role in Firestore
+ */
+export async function adminMiddleware(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  try {
+    const userDoc = await admin.firestore().collection('users').doc(req.user.uid).get();
+
+    if (!userDoc.exists) {
+      return res.status(403).json({ error: 'User not found' });
+    }
+
+    const userData = userDoc.data();
+    if (userData?.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    req.user.role = 'admin';
+    next();
+  } catch (error) {
+    console.error('Admin check error:', error);
+    return res.status(500).json({ error: 'Failed to verify admin status' });
   }
 }

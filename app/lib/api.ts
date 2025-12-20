@@ -34,6 +34,26 @@ export interface ApiResponse<T> {
   site?: T;
 }
 
+export interface Template {
+  id: string;
+  name: string;
+  description: string;
+  thumbnailUrl: string | null;
+  sourceSiteId: string;
+  userId: string;
+  isPublic: boolean;
+  isOwner: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TemplateCreateRequest {
+  siteId: string;
+  name: string;
+  description?: string;
+  isPublic?: boolean;
+}
+
 // Get Firebase Auth Token
 async function getAuthToken(): Promise<string> {
   const user = auth.currentUser;
@@ -111,6 +131,43 @@ export const api = {
   // Health check
   async healthCheck(): Promise<{ status: string }> {
     return apiRequest<{ status: string }>('/health');
+  },
+
+  // ============================================
+  // TEMPLATES
+  // ============================================
+
+  // Get all templates
+  async getTemplates(): Promise<Template[]> {
+    return apiRequest<Template[]>('/templates/');
+  },
+
+  // Get a specific template
+  async getTemplate(templateId: string): Promise<Template> {
+    return apiRequest<Template>(`/templates/${templateId}`);
+  },
+
+  // Create template from site (admin only)
+  async createTemplate(data: TemplateCreateRequest): Promise<ApiResponse<Template>> {
+    return apiRequest<ApiResponse<Template>>('/templates/', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Update template (admin only)
+  async updateTemplate(templateId: string, data: Partial<TemplateCreateRequest>): Promise<ApiResponse<void>> {
+    return apiRequest<ApiResponse<void>>(`/templates/${templateId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Delete template (admin only)
+  async deleteTemplate(templateId: string): Promise<ApiResponse<void>> {
+    return apiRequest<ApiResponse<void>>(`/templates/${templateId}`, {
+      method: 'DELETE',
+    });
   },
 };
 

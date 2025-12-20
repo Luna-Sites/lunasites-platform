@@ -2,8 +2,13 @@ import express from 'express';
 import cors from 'cors';
 import { config } from './config/index.js';
 import sitesRouter from './routes/sites.js';
+import templatesRouter from './routes/templates.js';
+import { initTemplatesTable } from './services/masterDb.js';
 
 const app = express();
+
+// Initialize templates table
+initTemplatesTable().catch(console.error);
 
 // Middleware
 app.use(
@@ -21,6 +26,7 @@ app.get('/health', (req, res) => {
 
 // Routes
 app.use('/sites', sitesRouter);
+app.use('/templates', templatesRouter);
 
 // Error handler
 app.use(

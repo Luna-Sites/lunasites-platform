@@ -217,3 +217,166 @@ export async function getMasterSiteDbConnection(siteId: string): Promise<{
     connectionString: `postgresql://${row.db_user}:${row.db_password}@${row.db_host}:${row.db_port}/${row.db_name}`,
   };
 }
+
+// ============================================
+// TEMPLATES
+// ============================================
+
+export interface TemplateRecord {
+  id: string;
+  name: string;
+  description: string;
+  thumbnail_url: string | null;
+  source_site_id: string;
+  user_id: string;
+  is_public: boolean;
+  documents: object; // JSON blob with all documents
+  created_at: Date;
+  updated_at: Date;
+}
+
+/**
+ * Initialize the templates table
+ */
+export async function initTemplatesTable(): Promise<void> {
+  const pool = getMasterPool();
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS templates (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name VARCHAR(255) NOT NULL,
+      description TEXT,
+      thumbnail_url TEXT,
+      source_site_id VARCHAR(100),
+      user_id VARCHAR(100) NOT NULL,
+      is_public BOOLEAN DEFAULT false,
+      documents JSONB NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_templates_user_id ON templates(user_id);
+    CREATE INDEX IF NOT EXISTS idx_templates_is_public ON templates(is_public);
+  `);
+
+  console.log('[MasterDB] Templates table initialized');
+}
+
+/**
+ * Create a template from site content
+ */
+export async function createTemplate(params: {
+  name: string;
+  description?: string;
+  thumbnailUrl?: string;
+  sourceSiteId: string;
+  userId: string;
+  isPublic?: boolean;
+  documents: object;
+}): Promise<TemplateRecord> {
+  const pool = getMasterPool();
+
+  const result = await pool.query(
+    `INSERT INTO templates (name, description, thumbnail_url, source_site_id, user_id, is_public, documents)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
+     RETURNING *`,
+    [
+      params.name,
+      params.description || '',
+      params.thumbnailUrl || null,
+      params.sourceSiteId,
+      params.userId,
+      params.isPublic || false,
+      JSON.stringify(params.documents),
+    ]
+  );
+
+  return result.rows[0];
+}
+
+/**
+ * Get all public templates + user's own templates
+ */
+export async function getTemplates(userId: string): Promise<TemplateRecord[]> {
+  const pool = getMasterPool();
+
+  const result = await pool.query(
+    `SELECT id, name, description, thumbnail_url, source_site_id, user_id, is_public, created_at, updated_at
+     FROM templates
+     WHERE is_public = true OR user_id = $1
+     ORDER BY created_at DESC`,
+    [userId]
+  );
+
+  return result.rows;
+}
+
+/**
+ * Get template by ID (with documents for cloning)
+ */
+export async function getTemplateById(templateId: string): Promise<TemplateRecord | null> {
+  const pool = getMasterPool();
+
+  const result = await pool.query(
+    'SELECT * FROM templates WHERE id = $1',
+    [templateId]
+  );
+
+  return result.rows[0] || null;
+}
+
+/**
+ * Update template
+ */
+export async function updateTemplate(
+  templateId: string,
+  userId: string,
+  params: { name?: string; description?: string; thumbnailUrl?: string; isPublic?: boolean }
+): Promise<void> {
+  const pool = getMasterPool();
+
+  const updates: string[] = [];
+  const values: any[] = [];
+  let paramIndex = 1;
+
+  if (params.name !== undefined) {
+    updates.push(`name = $${paramIndex++}`);
+    values.push(params.name);
+  }
+  if (params.description !== undefined) {
+    updates.push(`description = $${paramIndex++}`);
+    values.push(params.description);
+  }
+  if (params.thumbnailUrl !== undefined) {
+    updates.push(`thumbnail_url = $${paramIndex++}`);
+    values.push(params.thumbnailUrl);
+  }
+  if (params.isPublic !== undefined) {
+    updates.push(`is_public = $${paramIndex++}`);
+    values.push(params.isPublic);
+  }
+
+  if (updates.length === 0) return;
+
+  updates.push('updated_at = NOW()');
+  values.push(templateId, userId);
+
+  await pool.query(
+    `UPDATE templates SET ${updates.join(', ')} WHERE id = $${paramIndex++} AND user_id = $${paramIndex}`,
+    values
+  );
+}
+
+/**
+ * Delete template (only owner can delete)
+ */
+export async function deleteTemplate(templateId: string, userId: string): Promise<boolean> {
+  const pool = getMasterPool();
+
+  const result = await pool.query(
+    'DELETE FROM templates WHERE id = $1 AND user_id = $2',
+    [templateId, userId]
+  );
+
+  return (result.rowCount ?? 0) > 0;
+}

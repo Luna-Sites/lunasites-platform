@@ -1,16 +1,18 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { 
-  type User, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signOut, 
+import {
+  type User,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
   onAuthStateChanged,
   signInWithPopup
 } from 'firebase/auth';
-import { auth, googleProvider } from '../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, googleProvider, db } from '../lib/firebase';
 
 interface AuthContextType {
   user: User | null;
+  userRole: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string) => Promise<void>;
@@ -34,11 +36,30 @@ interface AuthProviderProps {
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
+
+      if (user) {
+        // Fetch user role from Firestore
+        try {
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          if (userDoc.exists()) {
+            setUserRole(userDoc.data()?.role || null);
+          } else {
+            setUserRole(null);
+          }
+        } catch (error) {
+          console.error('Error fetching user role:', error);
+          setUserRole(null);
+        }
+      } else {
+        setUserRole(null);
+      }
+
       setLoading(false);
     });
 
@@ -79,6 +100,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const value = {
     user,
+    userRole,
     loading,
     login,
     register,
