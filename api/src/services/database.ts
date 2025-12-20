@@ -283,8 +283,9 @@ export async function updateDatabaseOwner(
         ON CONFLICT ("user", role) DO NOTHING
       `, [newOwnerId]);
 
-      // Invalidate password for 'admin' user (security - prevent password login)
-      await client.query(`UPDATE "user" SET password = '' WHERE id = 'admin'`);
+      // Delete legacy 'admin' user (security - not needed with Firebase auth)
+      await client.query(`DELETE FROM user_role WHERE "user" = 'admin'`);
+      await client.query(`DELETE FROM "user" WHERE id = 'admin'`);
 
       // Verify the update worked
       const verifyUser = await client.query('SELECT * FROM "user"');
