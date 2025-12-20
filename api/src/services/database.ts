@@ -231,8 +231,13 @@ export async function updateDatabaseOwner(
   try {
     await client.connect();
 
-    // Get current user id (from template)
-    const oldUserResult = await client.query('SELECT id FROM "user" LIMIT 1');
+    // Get current user id (from template) - skip system users like 'anonymous'
+    const oldUserResult = await client.query(`
+      SELECT id FROM "user"
+      WHERE id NOT IN ('anonymous')
+      ORDER BY id
+      LIMIT 1
+    `);
     const oldUserId = oldUserResult.rows[0]?.id;
 
     // Skip if same user (user is creating site from their own template)
@@ -278,6 +283,12 @@ export async function updateDatabaseOwner(
         ON CONFLICT ("user", role) DO NOTHING
       `, [newOwnerId]);
 
+      // Verify the update worked
+      const verifyUser = await client.query('SELECT * FROM "user"');
+      const verifyRoles = await client.query('SELECT * FROM user_role');
+      console.log(`[DB Update] Database: ${dbName}`);
+      console.log(`[DB Update] Users:`, verifyUser.rows);
+      console.log(`[DB Update] User roles:`, verifyRoles.rows);
       console.log(`Updated owner from ${oldUserId} to ${newOwnerId} in ${dbName}`);
     } else {
       // No existing user, create new owner with Administrator role
