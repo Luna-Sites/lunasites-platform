@@ -14,9 +14,11 @@ export default function TemplateIframePreview({
 }: TemplateIframePreviewProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<number>();
+  const scrollPosRef = useRef(0);
 
   const siteUrl = `https://${siteId}.luna-sites.com`;
 
@@ -26,75 +28,53 @@ export default function TemplateIframePreview({
     setError(false);
   }, [siteId]);
 
+  // Hover-based scroll animation for card mode
   useEffect(() => {
     if (mode !== 'card' || loading) return;
 
-    // Auto-scroll animation for card mode
-    const startScrollAnimation = () => {
-      const iframe = iframeRef.current;
-      if (!iframe?.contentWindow) return;
+    const iframe = iframeRef.current;
+    if (!iframe) return;
 
-      let scrollPos = 0;
-      let direction = 1;
-      const scrollSpeed = 0.5;
-      const pauseAtEnds = 2000; // 2 seconds pause at top/bottom
-      let pauseStart: number | null = null;
+    const scrollSpeed = 2; // pixels per frame
 
-      const animate = () => {
-        try {
-          const doc = iframe.contentDocument || iframe.contentWindow?.document;
-          if (!doc) {
-            animationRef.current = requestAnimationFrame(animate);
-            return;
-          }
-
-          const maxScroll = doc.documentElement.scrollHeight - doc.documentElement.clientHeight;
-
-          // Handle pause at ends
-          if (pauseStart !== null) {
-            if (Date.now() - pauseStart < pauseAtEnds) {
-              animationRef.current = requestAnimationFrame(animate);
-              return;
-            }
-            pauseStart = null;
-          }
-
-          // Update scroll position
-          scrollPos += scrollSpeed * direction;
-
-          // Check bounds and pause
-          if (scrollPos >= maxScroll) {
-            scrollPos = maxScroll;
-            direction = -1;
-            pauseStart = Date.now();
-          } else if (scrollPos <= 0) {
-            scrollPos = 0;
-            direction = 1;
-            pauseStart = Date.now();
-          }
-
-          doc.documentElement.scrollTop = scrollPos;
-        } catch {
-          // Cross-origin restriction - can't control scroll
+    const animate = () => {
+      try {
+        const doc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (!doc) {
+          animationRef.current = requestAnimationFrame(animate);
+          return;
         }
 
-        animationRef.current = requestAnimationFrame(animate);
-      };
+        const maxScroll = doc.documentElement.scrollHeight - doc.documentElement.clientHeight;
 
-      // Start animation after a short delay
-      setTimeout(() => {
-        animationRef.current = requestAnimationFrame(animate);
-      }, 1000);
+        if (isHovering) {
+          // Scroll down on hover
+          scrollPosRef.current = Math.min(scrollPosRef.current + scrollSpeed, maxScroll);
+        } else {
+          // Scroll back to top when not hovering
+          scrollPosRef.current = Math.max(scrollPosRef.current - scrollSpeed * 2, 0);
+        }
+
+        doc.documentElement.scrollTop = scrollPosRef.current;
+
+        // Continue animation if still scrolling
+        if ((isHovering && scrollPosRef.current < maxScroll) ||
+            (!isHovering && scrollPosRef.current > 0)) {
+          animationRef.current = requestAnimationFrame(animate);
+        }
+      } catch {
+        // Cross-origin restriction - can't control scroll
+      }
     };
 
-    startScrollAnimation();
+    animationRef.current = requestAnimationFrame(animate);
 
     return () => {
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [mode, loading]);
+  }, [mode, loading, isHovering]);
 
   const handleLoad = () => {
     setLoading(false);
@@ -103,6 +83,18 @@ export default function TemplateIframePreview({
   const handleError = () => {
     setLoading(false);
     setError(true);
+  };
+
+  const handleMouseEnter = () => {
+    if (mode === 'card') {
+      setIsHovering(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (mode === 'card') {
+      setIsHovering(false);
+    }
   };
 
   if (error) {
@@ -119,6 +111,8 @@ export default function TemplateIframePreview({
     <div
       ref={containerRef}
       className={`relative overflow-hidden bg-slate-100 ${className}`}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
     >
       {loading && (
         <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-purple-100 to-blue-100 z-10">
