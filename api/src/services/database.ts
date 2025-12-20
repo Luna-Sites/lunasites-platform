@@ -235,6 +235,12 @@ export async function updateDatabaseOwner(
     const oldUserResult = await client.query('SELECT id FROM "user" LIMIT 1');
     const oldUserId = oldUserResult.rows[0]?.id;
 
+    // Skip if same user (user is creating site from their own template)
+    if (oldUserId === newOwnerId) {
+      console.log(`Owner ${newOwnerId} is the same, skipping update in ${dbName}`);
+      return;
+    }
+
     if (oldUserId) {
       // Update user table with new owner
       await client.query(`
@@ -266,7 +272,26 @@ export async function updateDatabaseOwner(
         UPDATE version SET actor = $1 WHERE actor = $2
       `, [newOwnerId, oldUserId]);
 
+      // Ensure new owner has Administrator role
+      await client.query(`
+        INSERT INTO user_role ("user", role) VALUES ($1, 'Administrator')
+        ON CONFLICT ("user", role) DO NOTHING
+      `, [newOwnerId]);
+
       console.log(`Updated owner from ${oldUserId} to ${newOwnerId} in ${dbName}`);
+    } else {
+      // No existing user, create new owner with Administrator role
+      await client.query(`
+        INSERT INTO "user" (id, email, fullname, password) VALUES ($1, $2, $3, '')
+        ON CONFLICT (id) DO UPDATE SET email = $2, fullname = $3
+      `, [newOwnerId, ownerEmail || '', ownerName || '']);
+
+      await client.query(`
+        INSERT INTO user_role ("user", role) VALUES ($1, 'Administrator')
+        ON CONFLICT ("user", role) DO NOTHING
+      `, [newOwnerId]);
+
+      console.log(`Created new owner ${newOwnerId} in ${dbName}`);
     }
   } finally {
     await client.end();
