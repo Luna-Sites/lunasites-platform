@@ -231,10 +231,10 @@ export async function updateDatabaseOwner(
   try {
     await client.connect();
 
-    // Get current user id (from template) - skip system users like 'anonymous'
+    // Get current user id (from template) - skip system users like 'anonymous' and 'admin'
     const oldUserResult = await client.query(`
       SELECT id FROM "user"
-      WHERE id NOT IN ('anonymous')
+      WHERE id NOT IN ('anonymous', 'admin')
       ORDER BY id
       LIMIT 1
     `);
@@ -282,6 +282,10 @@ export async function updateDatabaseOwner(
         INSERT INTO user_role ("user", role) VALUES ($1, 'Administrator')
         ON CONFLICT ("user", role) DO NOTHING
       `, [newOwnerId]);
+
+      // Delete legacy 'admin' user if exists (not needed with Firebase auth)
+      await client.query(`DELETE FROM user_role WHERE "user" = 'admin'`);
+      await client.query(`DELETE FROM "user" WHERE id = 'admin'`);
 
       // Verify the update worked
       const verifyUser = await client.query('SELECT * FROM "user"');
