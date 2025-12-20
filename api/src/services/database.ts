@@ -283,16 +283,27 @@ export async function updateDatabaseOwner(
         ON CONFLICT ("user", role) DO NOTHING
       `, [newOwnerId]);
 
+      // Log state BEFORE delete
+      const beforeUsers = await client.query('SELECT * FROM "user"');
+      const beforeRoles = await client.query('SELECT * FROM user_role');
+      const beforeDocs = await client.query('SELECT uuid, id, title, parent FROM document LIMIT 10');
+      console.log(`[DB Update] BEFORE DELETE - Database: ${dbName}`);
+      console.log(`[DB Update] BEFORE Users:`, beforeUsers.rows);
+      console.log(`[DB Update] BEFORE User roles:`, beforeRoles.rows);
+      console.log(`[DB Update] BEFORE Documents:`, beforeDocs.rows);
+
       // Delete legacy 'admin' user (security - not needed with Firebase auth)
       await client.query(`DELETE FROM user_role WHERE "user" = 'admin'`);
       await client.query(`DELETE FROM "user" WHERE id = 'admin'`);
 
-      // Verify the update worked
-      const verifyUser = await client.query('SELECT * FROM "user"');
-      const verifyRoles = await client.query('SELECT * FROM user_role');
-      console.log(`[DB Update] Database: ${dbName}`);
-      console.log(`[DB Update] Users:`, verifyUser.rows);
-      console.log(`[DB Update] User roles:`, verifyRoles.rows);
+      // Log state AFTER delete
+      const afterUsers = await client.query('SELECT * FROM "user"');
+      const afterRoles = await client.query('SELECT * FROM user_role');
+      const afterDocs = await client.query('SELECT uuid, id, title, parent FROM document LIMIT 10');
+      console.log(`[DB Update] AFTER DELETE - Database: ${dbName}`);
+      console.log(`[DB Update] AFTER Users:`, afterUsers.rows);
+      console.log(`[DB Update] AFTER User roles:`, afterRoles.rows);
+      console.log(`[DB Update] AFTER Documents:`, afterDocs.rows);
       console.log(`Updated owner from ${oldUserId} to ${newOwnerId} in ${dbName}`);
     } else {
       // No existing user, create new owner with Administrator role
