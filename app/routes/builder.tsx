@@ -98,6 +98,8 @@ export default function Builder() {
       const result = await api.createSite({
         site_id: siteId,
         name: siteTitle,
+        // Pass template ID if selected (not 'blank')
+        template_id: selectedTemplate && selectedTemplate !== 'blank' ? selectedTemplate : undefined,
       });
 
       if (result.success) {

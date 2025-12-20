@@ -3,6 +3,33 @@ import { auth } from './firebase';
 // API Configuration
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
+// Public template type (for builder - no auth required)
+export interface PublicTemplate {
+  id: string;
+  name: string;
+  description: string;
+  thumbnailUrl: string | null;
+  sourceSiteId: string;
+  isPublic: boolean;
+  createdAt: string;
+}
+
+// Fetch public templates (no auth required)
+export async function getPublicTemplates(): Promise<PublicTemplate[]> {
+  const response = await fetch(`${API_BASE_URL}/templates/public`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch templates');
+  }
+  return response.json();
+}
+
+// User info type
+export interface UserInfo {
+  uid: string;
+  email: string;
+  role: string | null;
+}
+
 // Types
 export interface Site {
   id: string;
@@ -19,6 +46,7 @@ export interface Site {
 export interface SiteCreateRequest {
   site_id: string;
   name: string;
+  template_id?: string;
 }
 
 export interface SiteAvailabilityResponse {
@@ -96,6 +124,11 @@ async function apiRequest<T>(
 
 // API Functions
 export const api = {
+  // Get current user info (including role)
+  async getMe(): Promise<UserInfo> {
+    return apiRequest<UserInfo>('/me');
+  },
+
   // Check site ID availability
   async checkSiteAvailability(siteId: string): Promise<SiteAvailabilityResponse> {
     return apiRequest<SiteAvailabilityResponse>(`/sites/check-availability/${siteId}`, {

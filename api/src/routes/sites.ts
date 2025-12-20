@@ -5,6 +5,7 @@ import * as renderService from '../services/render.js';
 import * as databaseService from '../services/database.js';
 import * as masterDbService from '../services/masterDb.js';
 import * as siteBootstrap from '../services/siteBootstrap.js';
+import { importTemplateDocuments } from './templates.js';
 import { config } from '../config/index.js';
 
 const router = Router();
@@ -108,7 +109,7 @@ router.post(
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const userId = req.user!.uid;
-      const { site_id, name } = req.body;
+      const { site_id, name, template_id } = req.body;
 
       if (!site_id || !name) {
         return res.status(400).json({ error: 'site_id and name are required' });
@@ -133,7 +134,7 @@ router.post(
       // Deploy site (async) - pass Firebase user info for owner creation
       const ownerEmail = req.user!.email;
       const ownerName = req.user!.name || name;
-      deploySite(site.id, site_id, name, userId, ownerEmail, ownerName).catch((error: Error) => {
+      deploySite(site.id, site_id, name, userId, ownerEmail, ownerName, template_id).catch((error: Error) => {
         console.error('Site deployment failed:', error);
         sitesService.setSiteError(site.id);
       });
@@ -206,9 +207,10 @@ async function deploySite(
   siteName: string,
   userId: string,
   ownerEmail?: string,
-  ownerName?: string
+  ownerName?: string,
+  templateId?: string
 ) {
-  console.log(`Starting deployment for site: ${siteId} (multi-tenant: ${MULTI_TENANT})`);
+  console.log(`Starting deployment for site: ${siteId} (multi-tenant: ${MULTI_TENANT}, template: ${templateId || 'none'})`);
 
   // Create database for this site
   console.log(`Creating database for site: ${siteId}`);
@@ -245,6 +247,29 @@ async function deploySite(
       { siteId, firebaseUid: userId, ownerEmail, ownerName }
     );
     console.log(`Bootstrap completed for site: ${siteId}`);
+
+    // If a template was specified, import its documents
+    if (templateId) {
+      console.log(`Importing template ${templateId} for site: ${siteId}`);
+      const template = await masterDbService.getTemplateById(templateId);
+      if (template && template.documents) {
+        const docs = Array.isArray(template.documents) ? template.documents : [];
+        if (docs.length > 0) {
+          await importTemplateDocuments(
+            {
+              host: dbInfo.host,
+              port: parseInt(dbInfo.port),
+              database: dbInfo.database,
+              user: dbInfo.user,
+              password: dbInfo.password,
+            },
+            docs,
+            userId
+          );
+          console.log(`Template documents imported for site: ${siteId}`);
+        }
+      }
+    }
 
     // Custom domain registration disabled - using wildcard domain on Render
     // const workerServiceId = process.env.RENDER_WORKER_SERVICE_ID;

@@ -1,5 +1,6 @@
-import { ArrowRight } from 'lucide-react';
-import { categories, templates } from '../../data/wizard-data';
+import { useState, useEffect } from 'react';
+import { ArrowRight, Globe } from 'lucide-react';
+import { getPublicTemplates, type PublicTemplate } from '../../lib/api';
 import WizardProgress from './WizardProgress';
 
 interface WizardStep1Props {
@@ -10,15 +11,26 @@ interface WizardStep1Props {
 }
 
 export default function WizardStep1({
-  selectedCategory,
-  onCategoryChange,
   onTemplateSelect,
   totalSteps
 }: WizardStep1Props) {
-  const filteredTemplates = templates.filter(template => {
-    const matchesCategory = !selectedCategory || selectedCategory === 'popular' || template.category === selectedCategory;
-    return matchesCategory;
-  });
+  const [templates, setTemplates] = useState<PublicTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadTemplates();
+  }, []);
+
+  const loadTemplates = async () => {
+    try {
+      const data = await getPublicTemplates();
+      setTemplates(data);
+    } catch (error) {
+      console.error('Error loading templates:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen p-8 lg:p-16">
@@ -30,27 +42,11 @@ export default function WizardStep1({
             Select a template to customize or start with a blank canvas
           </p>
 
-          {/* Category Select and Blank Canvas - Same Row */}
-          <div className="flex flex-col md:flex-row gap-4 items-stretch mb-12">
-            {/* Category Select - Left */}
-            <div className="flex-1">
-              <select
-                value={selectedCategory || 'popular'}
-                onChange={(e) => onCategoryChange(e.target.value === 'popular' ? null : e.target.value)}
-                className="w-full h-full px-6 py-4 rounded-2xl border-2 border-slate-200 bg-white text-slate-900 hover:border-purple-300 focus:border-purple-500 focus:outline-none transition-all cursor-pointer"
-              >
-                {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
-                    {category.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Blank Canvas Button - Right */}
+          {/* Blank Canvas Button */}
+          <div className="flex justify-center mb-12">
             <button
               onClick={() => onTemplateSelect('blank')}
-              className="flex-1 p-6 rounded-2xl border-2 border-dashed border-purple-300 hover:border-purple-500 hover:bg-purple-50/50 transition-all group"
+              className="w-full max-w-md p-6 rounded-2xl border-2 border-dashed border-purple-300 hover:border-purple-500 hover:bg-purple-50/50 transition-all group"
             >
               <div className="flex items-center justify-between">
                 <div className="text-left">
@@ -63,28 +59,55 @@ export default function WizardStep1({
           </div>
         </div>
 
+        {/* Loading State */}
+        {loading && (
+          <div className="text-center py-20">
+            <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-slate-500">Loading templates...</p>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && templates.length === 0 && (
+          <div className="text-center py-20">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 flex items-center justify-center">
+              <Globe className="w-8 h-8 text-slate-400" />
+            </div>
+            <p className="text-slate-600 font-medium">No templates available yet</p>
+            <p className="text-sm text-slate-400 mt-1">
+              Start with a blank canvas or check back later
+            </p>
+          </div>
+        )}
+
         {/* Templates Grid - 2 Columns */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {filteredTemplates.map((template) => (
-            <button
-              key={template.id}
-              onClick={() => onTemplateSelect(template.id)}
-              className="group relative overflow-hidden rounded-2xl bg-white shadow-lg hover:shadow-2xl transition-all hover:scale-105"
-            >
-              <div className="aspect-[16/10] overflow-hidden">
-                <img
-                  src={template.image}
-                  alt={template.name}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                />
-              </div>
-              <div className="p-6 text-left">
-                <div className="text-slate-900 font-medium mb-1">{template.name}</div>
-                <div className="text-sm text-slate-600">{template.description}</div>
-              </div>
-            </button>
-          ))}
-        </div>
+        {!loading && templates.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {templates.map((template) => (
+              <button
+                key={template.id}
+                onClick={() => onTemplateSelect(template.id)}
+                className="group relative overflow-hidden rounded-2xl bg-white shadow-lg hover:shadow-2xl transition-all hover:scale-105"
+              >
+                <div className="aspect-[16/10] overflow-hidden bg-gradient-to-br from-purple-100 to-blue-100 flex items-center justify-center">
+                  {template.thumbnailUrl ? (
+                    <img
+                      src={template.thumbnailUrl}
+                      alt={template.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    />
+                  ) : (
+                    <Globe className="w-12 h-12 text-purple-300" />
+                  )}
+                </div>
+                <div className="p-6 text-left">
+                  <div className="text-slate-900 font-medium mb-1">{template.name}</div>
+                  <div className="text-sm text-slate-600">{template.description || 'No description'}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

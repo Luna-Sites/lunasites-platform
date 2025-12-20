@@ -12,6 +12,33 @@ import knex from 'knex';
 const router = Router();
 
 /**
+ * Get all public templates (no auth required - for builder)
+ */
+router.get(
+  '/public',
+  async (req, res: Response) => {
+    try {
+      const templates = await masterDbService.getPublicTemplates();
+
+      return res.json(
+        templates.map((t) => ({
+          id: t.id,
+          name: t.name,
+          description: t.description,
+          thumbnailUrl: t.thumbnail_url,
+          sourceSiteId: t.source_site_id,
+          isPublic: true,
+          createdAt: t.created_at,
+        }))
+      );
+    } catch (error) {
+      console.error('Get public templates error:', error);
+      return res.status(500).json({ error: 'Failed to get templates' });
+    }
+  }
+);
+
+/**
  * Get all available templates (public + user's own)
  */
 router.get(

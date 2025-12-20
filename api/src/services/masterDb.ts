@@ -295,6 +295,22 @@ export async function createTemplate(params: {
 }
 
 /**
+ * Get all public templates (no auth required)
+ */
+export async function getPublicTemplates(): Promise<TemplateRecord[]> {
+  const pool = getMasterPool();
+
+  const result = await pool.query(
+    `SELECT id, name, description, thumbnail_url, source_site_id, user_id, is_public, created_at, updated_at
+     FROM templates
+     WHERE is_public = true
+     ORDER BY created_at DESC`
+  );
+
+  return result.rows;
+}
+
+/**
  * Get all public templates + user's own templates
  */
 export async function getTemplates(userId: string): Promise<TemplateRecord[]> {
