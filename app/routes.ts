@@ -9,5 +9,6 @@ export default [
   route("/sites", "routes/sites.tsx"),
   route("/sites/:siteId/edit", "routes/sites.$siteId.edit.tsx"),
   route("/billing", "routes/billing.tsx"),
-  route("/profile", "routes/profile.tsx")
+  route("/profile", "routes/profile.tsx"),
+  route("/templates", "routes/templates.tsx")
 ] satisfies RouteConfig;
