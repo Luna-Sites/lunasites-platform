@@ -448,12 +448,13 @@ router.patch(
         };
 
         // Upsert the controlpanel record
-        await sitePool.query(
+        const upsertResult = await sitePool.query(
           `INSERT INTO controlpanel (id, title, "group", schema, data)
            VALUES ('site', 'Site Settings', 'site', '{}', $1)
            ON CONFLICT (id) DO UPDATE SET data = $1`,
           [updatedData]
         );
+        console.log(`Theme upserted for ${siteId}, rows affected:`, upsertResult.rowCount);
 
         return res.json({ success: true, message: 'Theme updated' });
       } finally {
