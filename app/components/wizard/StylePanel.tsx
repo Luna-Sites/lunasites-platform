@@ -2,7 +2,7 @@ import { Check, ChevronRight, ChevronDown } from 'lucide-react';
 import { colorPalettes, fontPairs, buttonStyles, inputStyles } from '../../data/wizard-data';
 
 interface StylePanelProps {
-  selectedPalette: string;
+  selectedPalette: string | null;
   selectedFont: string;
   selectedButtonStyle: string;
   selectedInputStyle: string;

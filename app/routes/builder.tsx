@@ -29,7 +29,7 @@ export default function Builder() {
   const [selectedTemplateSiteId, setSelectedTemplateSiteId] = useState<string | null>(null);
   const [siteTitle, setSiteTitle] = useState('');
   const [siteId, setSiteId] = useState('');
-  const [selectedPalette, setSelectedPalette] = useState<string>('purple-blue');
+  const [selectedPalette, setSelectedPalette] = useState<string | null>(null);
   const [selectedFont, setSelectedFont] = useState<string>('professional-1');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -61,16 +61,23 @@ export default function Builder() {
         setSiteStatus(site.status);
 
         if (site.status === 'active') {
-          // Save theme if custom colors were selected
-          if (customColors.length > 0) {
+          // Save theme if user selected a palette or custom colors
+          const hasCustomColors = customColors.length > 0;
+          const hasSelectedPalette = selectedPalette !== null;
+
+          if (hasCustomColors || hasSelectedPalette) {
             try {
+              const colors = hasCustomColors
+                ? customColors
+                : colorPalettes.find(p => p.id === selectedPalette)?.colors || [];
+
               await api.updateSiteTheme(createdSiteId, {
-                presetId: selectedPalette,
+                presetId: selectedPalette || 'default',
                 overrides: {
-                  primary: customColors[0] || '',
-                  secondary: customColors[1] || '',
-                  accent: customColors[2] || '',
-                  background: customColors[3] || '',
+                  primary: colors[0] || '',
+                  secondary: colors[1] || '',
+                  accent: colors[2] || '',
+                  background: colors[3] || '',
                 },
                 darkMode: false,
               });

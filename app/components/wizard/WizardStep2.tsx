@@ -5,7 +5,7 @@ import { ASSETS } from '../../data/wizard-data';
 interface WizardStep2Props {
   selectedTemplate: string | null;
   selectedTemplateSiteId: string | null;
-  selectedPalette: string;
+  selectedPalette: string | null;
   selectedFont: string;
   selectedButtonStyle: string;
   selectedInputStyle: string;
