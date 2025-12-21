@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Route } from "./+types/builder";
 import { ArrowRight, ArrowLeft } from 'lucide-react';
 import { Button } from "../components/ui/button";
 import { validateSiteId, api } from "../lib/api";
 import { auth, googleProvider } from "../lib/firebase";
 import { signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
-import { colorPalettes } from "../data/wizard-data";
+import { colorPalettes, fontPairs } from "../data/wizard-data";
 import { useAuth } from "../contexts/AuthContext";
 import WizardStep1 from "../components/wizard/WizardStep1";
 import WizardStep2, { WizardStep2RightPanel } from "../components/wizard/WizardStep2";
@@ -61,6 +61,24 @@ export default function Builder() {
         setSiteStatus(site.status);
 
         if (site.status === 'active') {
+          // Save theme if custom colors were selected
+          if (customColors.length > 0) {
+            try {
+              await api.updateSiteTheme(createdSiteId, {
+                presetId: selectedPalette,
+                overrides: {
+                  primary: customColors[0] || '',
+                  secondary: customColors[1] || '',
+                  accent: customColors[2] || '',
+                  background: customColors[3] || '',
+                },
+                darkMode: false,
+              });
+            } catch (err) {
+              console.error('Failed to save theme:', err);
+              // Continue anyway - theme save is not critical
+            }
+          }
           // Site is ready, redirect to edit page
           window.location.href = `/sites/${createdSiteId}/edit`;
         } else if (site.status === 'error') {
@@ -77,7 +95,7 @@ export default function Builder() {
     const interval = setInterval(pollStatus, 2000);
 
     return () => clearInterval(interval);
-  }, [createdSiteId, isCompleting]);
+  }, [createdSiteId, isCompleting, customColors, selectedPalette]);
 
 
   const handleTemplateSelect = (templateId: string, sourceSiteId?: string) => {

@@ -1,4 +1,5 @@
 import { Router, Response } from 'express';
+import pg from 'pg';
 import { AuthenticatedRequest, authMiddleware } from '../middleware/auth.js';
 import * as sitesService from '../services/sites.js';
 import * as renderService from '../services/render.js';
@@ -388,6 +389,75 @@ router.post(
         error: 'Failed to re-bootstrap site',
         message: error instanceof Error ? error.message : 'Unknown error',
       });
+    }
+  }
+);
+
+// Update site theme
+router.patch(
+  '/:siteId/theme',
+  authMiddleware,
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { siteId } = req.params;
+      const userId = req.user!.uid;
+      const { presetId, overrides, darkMode } = req.body;
+
+      // Verify site ownership
+      const site = await sitesService.getSiteBySiteId(siteId);
+      if (!site) {
+        return res.status(404).json({ error: 'Site not found' });
+      }
+      if (site.userId !== userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      // Get database connection for this site
+      const dbConfig = await masterDbService.getMasterSiteDbConnection(siteId);
+      if (!dbConfig) {
+        return res.status(404).json({ error: 'Site database config not found' });
+      }
+
+      // Connect to site's database
+      const sitePool = new pg.Pool({
+        connectionString: dbConfig.connectionString,
+        ssl: dbConfig.host.includes('render.com') ? { rejectUnauthorized: false } : false,
+      });
+
+      try {
+        // Get current controlpanel data
+        const result = await sitePool.query(
+          "SELECT data FROM controlpanel WHERE id = 'site'"
+        );
+
+        let currentData: Record<string, unknown> = {};
+        if (result.rows.length > 0 && result.rows[0].data) {
+          currentData = result.rows[0].data;
+        }
+
+        // Update theme in data
+        const updatedData = {
+          ...currentData,
+          theme: {
+            presetId: presetId || 'default',
+            overrides: overrides || {},
+            darkMode: darkMode || false,
+          },
+        };
+
+        // Update the controlpanel record
+        await sitePool.query(
+          "UPDATE controlpanel SET data = $1 WHERE id = 'site'",
+          [JSON.stringify(updatedData)]
+        );
+
+        return res.json({ success: true, message: 'Theme updated' });
+      } finally {
+        await sitePool.end();
+      }
+    } catch (error) {
+      console.error('Update theme error:', error);
+      return res.status(500).json({ error: 'Failed to update theme' });
     }
   }
 );

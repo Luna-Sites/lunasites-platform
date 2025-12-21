@@ -160,7 +160,19 @@ export const api = {
       method: 'DELETE',
     });
   },
-  
+
+  // Update site theme
+  async updateSiteTheme(siteId: string, theme: {
+    presetId: string;
+    overrides: Record<string, string>;
+    darkMode?: boolean;
+  }): Promise<ApiResponse<void>> {
+    return apiRequest<ApiResponse<void>>(`/sites/${siteId}/theme`, {
+      method: 'PATCH',
+      body: JSON.stringify(theme),
+    });
+  },
+
   // Health check
   async healthCheck(): Promise<{ status: string }> {
     return apiRequest<{ status: string }>('/health');
