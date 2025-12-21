@@ -1,18 +1,29 @@
 import { useState, useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 
+interface FontSettings {
+  headingId: string;
+  bodyId: string;
+  headingWeight: number;
+  bodyWeight: number;
+  baseFontSize: number;
+  baseFontSizeMobile: number;
+}
+
 interface TemplateIframePreviewProps {
   siteId: string;
   mode: 'card' | 'full';
   className?: string;
   colors?: string[]; // [primary, secondary, accent, background]
+  fonts?: FontSettings;
 }
 
 export default function TemplateIframePreview({
   siteId,
   mode,
   className = '',
-  colors
+  colors,
+  fonts
 }: TemplateIframePreviewProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -22,28 +33,40 @@ export default function TemplateIframePreview({
   const animationRef = useRef<number>();
   const scrollPosRef = useRef(0);
 
-  // Build URL with color query params for preview
-  const buildSiteUrl = () => {
+  // Build URL with color and font query params for preview
+  const buildSiteUrl = (currentColors?: string[], currentFonts?: FontSettings) => {
     const baseUrl = `https://${siteId}.luna-sites.com`;
-    if (!colors || colors.length === 0) return baseUrl;
-
     const params = new URLSearchParams();
-    if (colors[0]) params.set('primary', colors[0]);
-    if (colors[1]) params.set('secondary', colors[1]);
-    if (colors[2]) params.set('accent', colors[2]);
-    if (colors[3]) params.set('background', colors[3]);
+
+    // Add color params
+    if (currentColors && currentColors.length > 0) {
+      if (currentColors[0]) params.set('primary', currentColors[0]);
+      if (currentColors[1]) params.set('secondary', currentColors[1]);
+      if (currentColors[2]) params.set('accent', currentColors[2]);
+      if (currentColors[3]) params.set('background', currentColors[3]);
+    }
+
+    // Add font params
+    if (currentFonts) {
+      params.set('font_heading', currentFonts.headingId);
+      params.set('font_body', currentFonts.bodyId);
+      params.set('heading_weight', String(currentFonts.headingWeight));
+      params.set('body_weight', String(currentFonts.bodyWeight));
+      params.set('base_size', String(currentFonts.baseFontSize));
+      params.set('base_size_mobile', String(currentFonts.baseFontSizeMobile));
+    }
 
     const queryString = params.toString();
     return queryString ? `${baseUrl}?${queryString}` : baseUrl;
   };
 
-  const siteUrl = buildSiteUrl();
+  const siteUrl = buildSiteUrl(colors, fonts);
 
   useEffect(() => {
-    // Reset state when siteId or colors change
+    // Reset state when siteId, colors, or fonts change
     setLoading(true);
     setError(false);
-  }, [siteId, colors]);
+  }, [siteId, colors, fonts]);
 
   // Hover-based scroll animation for card mode
   useEffect(() => {

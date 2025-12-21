@@ -30,7 +30,7 @@ export default function Builder() {
   const [siteTitle, setSiteTitle] = useState('');
   const [siteId, setSiteId] = useState('');
   const [selectedPalette, setSelectedPalette] = useState<string | null>(null);
-  const [selectedFont, setSelectedFont] = useState<string>('professional-1');
+  const [selectedFont, setSelectedFont] = useState<string | null>(null);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -42,6 +42,8 @@ export default function Builder() {
   const [customColors, setCustomColors] = useState<string[]>([]);
   const [selectedButtonStyle, setSelectedButtonStyle] = useState<string>('rounded');
   const [selectedInputStyle, setSelectedInputStyle] = useState<string>('rounded');
+  const [baseFontSize, setBaseFontSize] = useState<number>(16);
+  const [baseFontSizeMobile, setBaseFontSizeMobile] = useState<number>(14);
   const [error, setError] = useState<string | null>(null);
   const [siteIdError, setSiteIdError] = useState<string | null>(null);
   const [createdSiteId, setCreatedSiteId] = useState<string | null>(null);
@@ -71,6 +73,9 @@ export default function Builder() {
                 ? customColors
                 : colorPalettes.find(p => p.id === selectedPalette)?.colors || [];
 
+              // Get selected font pair for typography
+              const fontPair = fontPairs.find(f => f.id === selectedFont);
+
               await api.updateSiteTheme(createdSiteId, {
                 presetId: selectedPalette || 'default',
                 overrides: {
@@ -80,6 +85,15 @@ export default function Builder() {
                   background: colors[3] || '',
                 },
                 darkMode: false,
+                typography: fontPair ? {
+                  fontPresetId: fontPair.id,
+                  fontHeading: fontPair.headingId,
+                  fontBody: fontPair.bodyId,
+                  baseFontSize,
+                  baseFontSizeMobile,
+                  headingWeight: fontPair.headingWeight,
+                  bodyWeight: fontPair.bodyWeight,
+                } : undefined,
               });
             } catch (err) {
               console.error('Failed to save theme:', err);
@@ -102,7 +116,7 @@ export default function Builder() {
     const interval = setInterval(pollStatus, 2000);
 
     return () => clearInterval(interval);
-  }, [createdSiteId, isCompleting, customColors, selectedPalette]);
+  }, [createdSiteId, isCompleting, customColors, selectedPalette, selectedFont, baseFontSize, baseFontSizeMobile]);
 
 
   const handleTemplateSelect = (templateId: string, sourceSiteId?: string) => {
@@ -267,6 +281,8 @@ export default function Builder() {
                 selectedInputStyle={selectedInputStyle}
                 expandedSection={expandedSection}
                 currentColors={getCurrentColors()}
+                baseFontSize={baseFontSize}
+                baseFontSizeMobile={baseFontSizeMobile}
                 totalSteps={totalSteps}
                 onPaletteChange={(paletteId) => {
                   setSelectedPalette(paletteId);
@@ -277,6 +293,8 @@ export default function Builder() {
                 onInputStyleChange={setSelectedInputStyle}
                 onExpandSection={setExpandedSection}
                 onCustomColorChange={handleCustomColorChange}
+                onBaseFontSizeChange={setBaseFontSize}
+                onBaseFontSizeMobileChange={setBaseFontSizeMobile}
               />
             )}
 
@@ -424,12 +442,15 @@ export default function Builder() {
               <div className="w-full overflow-y-auto">
                 <WizardStep2RightPanel
                   selectedTemplate={selectedTemplate}
+                  selectedTemplateSiteId={selectedTemplateSiteId}
                   selectedPalette={selectedPalette}
                   selectedFont={selectedFont}
                   selectedButtonStyle={selectedButtonStyle}
                   selectedInputStyle={selectedInputStyle}
                   expandedSection={expandedSection}
                   currentColors={getCurrentColors()}
+                  baseFontSize={baseFontSize}
+                  baseFontSizeMobile={baseFontSizeMobile}
                   onPaletteChange={(paletteId) => {
                     setSelectedPalette(paletteId);
                     setCustomColors([]);
@@ -439,6 +460,8 @@ export default function Builder() {
                   onInputStyleChange={setSelectedInputStyle}
                   onExpandSection={setExpandedSection}
                   onCustomColorChange={handleCustomColorChange}
+                  onBaseFontSizeChange={setBaseFontSize}
+                  onBaseFontSizeMobileChange={setBaseFontSizeMobile}
                 />
               </div>
             ) : (

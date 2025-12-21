@@ -8,12 +8,16 @@ interface StylePanelProps {
   selectedInputStyle: string;
   expandedSection: string | null;
   currentColors: string[];
+  baseFontSize: number;
+  baseFontSizeMobile: number;
   onPaletteChange: (paletteId: string) => void;
   onFontChange: (fontId: string) => void;
   onButtonStyleChange: (styleId: string) => void;
   onInputStyleChange: (styleId: string) => void;
   onExpandSection: (section: string | null) => void;
   onCustomColorChange: (index: number, color: string) => void;
+  onBaseFontSizeChange: (size: number) => void;
+  onBaseFontSizeMobileChange: (size: number) => void;
 }
 
 export default function StylePanel({
@@ -23,12 +27,16 @@ export default function StylePanel({
   selectedInputStyle,
   expandedSection,
   currentColors,
+  baseFontSize,
+  baseFontSizeMobile,
   onPaletteChange,
   onFontChange,
   onButtonStyleChange,
   onInputStyleChange,
   onExpandSection,
-  onCustomColorChange
+  onCustomColorChange,
+  onBaseFontSizeChange,
+  onBaseFontSizeMobileChange
 }: StylePanelProps) {
   const currentFontPair = fontPairs.find(f => f.id === selectedFont);
   const currentPalette = colorPalettes.find(p => p.id === selectedPalette);
@@ -136,17 +144,28 @@ export default function StylePanel({
           <div className="px-4 pb-4">
             <div className="bg-white rounded-lg p-4 border border-slate-200">
               <div
-                className="text-xl text-slate-900 mb-1 font-bold"
-                style={{ fontFamily: currentFontPair?.heading }}
+                className="text-slate-900 mb-1"
+                style={{
+                  fontFamily: currentFontPair?.heading,
+                  fontWeight: currentFontPair?.headingWeight,
+                  fontSize: `${baseFontSize * 1.5}px`
+                }}
               >
                 Heading
               </div>
               <p
-                className="text-sm text-slate-600"
-                style={{ fontFamily: currentFontPair?.body }}
+                className="text-slate-600"
+                style={{
+                  fontFamily: currentFontPair?.body,
+                  fontWeight: currentFontPair?.bodyWeight,
+                  fontSize: `${baseFontSize}px`
+                }}
               >
                 This is your paragraph.
               </p>
+              <div className="mt-2 pt-2 border-t border-slate-100 text-xs text-slate-400">
+                {currentFontPair?.heading} · {currentFontPair?.body}
+              </div>
             </div>
           </div>
 
@@ -169,16 +188,26 @@ export default function StylePanel({
                   <div className="flex items-center gap-3">
                     <div className="flex-1">
                       <div
-                        className="text-slate-900 mb-1 font-bold"
-                        style={{ fontFamily: font.heading, fontSize: '14px' }}
+                        className="text-slate-900 mb-0.5"
+                        style={{
+                          fontFamily: font.heading,
+                          fontWeight: font.headingWeight,
+                          fontSize: '18px'
+                        }}
                       >
-                        {font.heading}
+                        Heading
                       </div>
                       <div
-                        className="text-slate-600 text-xs"
-                        style={{ fontFamily: font.body }}
+                        className="text-slate-600 text-sm"
+                        style={{
+                          fontFamily: font.body,
+                          fontWeight: font.bodyWeight
+                        }}
                       >
-                        {font.body}
+                        This is your paragraph.
+                      </div>
+                      <div className="text-xs text-slate-400 mt-1">
+                        {font.name}
                       </div>
                     </div>
                     {selectedFont === font.id && (
@@ -189,6 +218,57 @@ export default function StylePanel({
               ))}
             </div>
           )}
+        </div>
+
+        {/* Base Font Size Section */}
+        <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
+          <div className="px-4 py-3">
+            <span className="text-sm font-medium text-slate-700">Base Size</span>
+          </div>
+          <div className="px-4 pb-4 space-y-3">
+            {/* Desktop Size */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-600">Desktop</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => onBaseFontSizeChange(Math.max(12, baseFontSize - 1))}
+                  className="w-8 h-8 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-600 font-medium"
+                >
+                  −
+                </button>
+                <span className="w-12 text-center text-sm font-medium text-slate-900">
+                  {baseFontSize}px
+                </span>
+                <button
+                  onClick={() => onBaseFontSizeChange(Math.min(24, baseFontSize + 1))}
+                  className="w-8 h-8 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-600 font-medium"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+            {/* Mobile Size */}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-600">Mobile</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => onBaseFontSizeMobileChange(Math.max(12, baseFontSizeMobile - 1))}
+                  className="w-8 h-8 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-600 font-medium"
+                >
+                  −
+                </button>
+                <span className="w-12 text-center text-sm font-medium text-slate-900">
+                  {baseFontSizeMobile}px
+                </span>
+                <button
+                  onClick={() => onBaseFontSizeMobileChange(Math.min(24, baseFontSizeMobile + 1))}
+                  className="w-8 h-8 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-600 font-medium"
+                >
+                  +
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Custom Colors Section */}

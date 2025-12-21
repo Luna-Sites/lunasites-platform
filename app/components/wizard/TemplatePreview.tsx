@@ -7,6 +7,8 @@ interface TemplatePreviewProps {
   selectedFont: string;
   selectedButtonStyle: string;
   colors: string[];
+  baseFontSize: number;
+  baseFontSizeMobile: number;
 }
 
 export default function TemplatePreview({
@@ -14,10 +16,22 @@ export default function TemplatePreview({
   sourceSiteId,
   selectedFont,
   selectedButtonStyle,
-  colors
+  colors,
+  baseFontSize,
+  baseFontSizeMobile
 }: TemplatePreviewProps) {
   const currentFont = fontPairs.find(f => f.id === selectedFont);
   const currentButtonStyle = buttonStyles.find(s => s.id === selectedButtonStyle);
+
+  // Build font settings for iframe preview
+  const fontSettings = currentFont ? {
+    headingId: currentFont.headingId,
+    bodyId: currentFont.bodyId,
+    headingWeight: currentFont.headingWeight,
+    bodyWeight: currentFont.bodyWeight,
+    baseFontSize,
+    baseFontSizeMobile
+  } : undefined;
 
   // Blank canvas - show placeholder preview with selected styles
   if (selectedTemplate === 'blank') {
@@ -80,6 +94,7 @@ export default function TemplatePreview({
         mode="full"
         className="aspect-[16/10]"
         colors={colors}
+        fonts={fontSettings}
       />
     );
   }

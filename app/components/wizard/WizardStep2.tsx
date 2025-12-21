@@ -11,6 +11,8 @@ interface WizardStep2Props {
   selectedInputStyle: string;
   expandedSection: string | null;
   currentColors: string[];
+  baseFontSize: number;
+  baseFontSizeMobile: number;
   totalSteps: number;
   onPaletteChange: (paletteId: string) => void;
   onFontChange: (fontId: string) => void;
@@ -18,6 +20,8 @@ interface WizardStep2Props {
   onInputStyleChange: (styleId: string) => void;
   onExpandSection: (section: string | null) => void;
   onCustomColorChange: (index: number, color: string) => void;
+  onBaseFontSizeChange: (size: number) => void;
+  onBaseFontSizeMobileChange: (size: number) => void;
 }
 
 export default function WizardStep2({
@@ -29,13 +33,17 @@ export default function WizardStep2({
   selectedInputStyle,
   expandedSection,
   currentColors,
+  baseFontSize,
+  baseFontSizeMobile,
   totalSteps,
   onPaletteChange,
   onFontChange,
   onButtonStyleChange,
   onInputStyleChange,
   onExpandSection,
-  onCustomColorChange
+  onCustomColorChange,
+  onBaseFontSizeChange,
+  onBaseFontSizeMobileChange
 }: WizardStep2Props) {
   return (
     <>
@@ -55,6 +63,8 @@ export default function WizardStep2({
             selectedFont={selectedFont}
             selectedButtonStyle={selectedButtonStyle}
             colors={currentColors}
+            baseFontSize={baseFontSize}
+            baseFontSizeMobile={baseFontSizeMobile}
           />
         </div>
       </div>
@@ -75,12 +85,16 @@ export function WizardStep2RightPanel(props: Omit<WizardStep2Props, 'totalSteps'
         selectedInputStyle={props.selectedInputStyle}
         expandedSection={props.expandedSection}
         currentColors={props.currentColors}
+        baseFontSize={props.baseFontSize}
+        baseFontSizeMobile={props.baseFontSizeMobile}
         onPaletteChange={props.onPaletteChange}
         onFontChange={props.onFontChange}
         onButtonStyleChange={props.onButtonStyleChange}
         onInputStyleChange={props.onInputStyleChange}
         onExpandSection={props.onExpandSection}
         onCustomColorChange={props.onCustomColorChange}
+        onBaseFontSizeChange={props.onBaseFontSizeChange}
+        onBaseFontSizeMobileChange={props.onBaseFontSizeMobileChange}
       />
     </div>
   );

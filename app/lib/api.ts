@@ -166,6 +166,15 @@ export const api = {
     presetId: string;
     overrides: Record<string, string>;
     darkMode?: boolean;
+    typography?: {
+      fontPresetId?: string;
+      fontHeading?: string;
+      fontBody?: string;
+      baseFontSize?: number;
+      baseFontSizeMobile?: number;
+      headingWeight?: number;
+      bodyWeight?: number;
+    };
   }): Promise<ApiResponse<void>> {
     return apiRequest<ApiResponse<void>>(`/sites/${siteId}/theme`, {
       method: 'PATCH',

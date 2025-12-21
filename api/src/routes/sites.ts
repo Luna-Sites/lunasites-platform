@@ -402,8 +402,8 @@ router.patch(
     try {
       const { siteId } = req.params;
       const userId = req.user!.uid;
-      const { presetId, overrides, darkMode } = req.body;
-      console.log(`Updating theme for site: ${siteId}`, { presetId, overrides, darkMode });
+      const { presetId, overrides, darkMode, typography } = req.body;
+      console.log(`Updating theme for site: ${siteId}`, { presetId, overrides, darkMode, typography });
 
       // Verify site ownership
       const site = await sitesService.getSiteBySiteId(siteId);
@@ -437,13 +437,27 @@ router.patch(
           currentData = result.rows[0].data;
         }
 
-        // Update theme in data
+        // Get existing theme to merge typography
+        const existingTheme = (currentData.theme as Record<string, unknown>) || {};
+
+        // Update theme in data (merge typography with existing)
         const updatedData = {
           ...currentData,
           theme: {
-            presetId: presetId || 'default',
-            overrides: overrides || {},
-            darkMode: darkMode || false,
+            presetId: presetId ?? existingTheme.presetId ?? 'default',
+            overrides: overrides ?? existingTheme.overrides ?? {},
+            darkMode: darkMode ?? existingTheme.darkMode ?? false,
+            typography: typography
+              ? { ...(existingTheme.typography as Record<string, unknown> || {}), ...typography }
+              : existingTheme.typography ?? {
+                  fontPresetId: 'modern',
+                  fontHeading: 'inter',
+                  fontBody: 'inter',
+                  baseFontSize: 16,
+                  baseFontSizeMobile: 14,
+                  headingWeight: 700,
+                  bodyWeight: 400,
+                },
           },
         };
 

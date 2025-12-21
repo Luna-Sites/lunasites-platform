@@ -92,85 +92,257 @@ export const colorPalettes = [
   { id: 'sunset', name: 'Sunset', colors: ['#DC2626', '#EA580C', '#FBBF24', '#FEF2F2'] }
 ];
 
+/**
+ * Font pairs for the wizard - synced with luna-theme font presets
+ * Each pair includes:
+ * - id: matches the CMS fontPresetId
+ * - headingId/bodyId: font IDs for CMS typography settings
+ * - heading/body: display names for preview (with font-family)
+ */
 export const fontPairs = [
+  // Classic/Normal Sans-Serif (most common)
   {
-    id: 'professional-1',
-    category: 'Professional',
-    name: 'Inter & Roboto',
-    heading: 'Inter',
+    id: 'standard',
+    category: 'Sans-Serif',
+    name: 'Standard',
+    heading: 'Roboto',
     body: 'Roboto',
+    headingId: 'roboto',
+    bodyId: 'roboto',
+    headingWeight: 700,
+    bodyWeight: 400,
     recommended: true
   },
   {
-    id: 'professional-2',
-    category: 'Professional',
-    name: 'Lora & Open Sans',
-    heading: 'Lora',
+    id: 'professional',
+    category: 'Sans-Serif',
+    name: 'Professional',
+    heading: 'Open Sans',
     body: 'Open Sans',
+    headingId: 'open-sans',
+    bodyId: 'open-sans',
+    headingWeight: 700,
+    bodyWeight: 400,
     recommended: false
   },
   {
-    id: 'playful-1',
-    category: 'Playful',
-    name: 'Fredoka & Inter',
-    heading: 'Fredoka',
+    id: 'minimal',
+    category: 'Sans-Serif',
+    name: 'Minimal',
+    heading: 'Lato',
+    body: 'Lato',
+    headingId: 'lato',
+    bodyId: 'lato',
+    headingWeight: 700,
+    bodyWeight: 400,
+    recommended: false
+  },
+  {
+    id: 'business',
+    category: 'Sans-Serif',
+    name: 'Business',
+    heading: 'Montserrat',
+    body: 'Open Sans',
+    headingId: 'montserrat',
+    bodyId: 'open-sans',
+    headingWeight: 600,
+    bodyWeight: 400,
+    recommended: false
+  },
+  {
+    id: 'simple',
+    category: 'Sans-Serif',
+    name: 'Simple',
+    heading: 'Source Sans Pro',
+    body: 'Source Sans Pro',
+    headingId: 'source-sans-pro',
+    bodyId: 'source-sans-pro',
+    headingWeight: 600,
+    bodyWeight: 400,
+    recommended: false
+  },
+  // Modern/Design Sans-Serif
+  {
+    id: 'modern',
+    category: 'Sans-Serif',
+    name: 'Modern',
+    heading: 'Inter',
     body: 'Inter',
+    headingId: 'inter',
+    bodyId: 'inter',
+    headingWeight: 700,
+    bodyWeight: 400,
     recommended: false
   },
   {
-    id: 'playful-2',
-    category: 'Playful',
-    name: 'Quicksand & Work Sans',
-    heading: 'Quicksand',
-    body: 'Work Sans',
+    id: 'clean',
+    category: 'Sans-Serif',
+    name: 'Clean',
+    heading: 'DM Sans',
+    body: 'DM Sans',
+    headingId: 'dm-sans',
+    bodyId: 'dm-sans',
+    headingWeight: 700,
+    bodyWeight: 400,
     recommended: false
   },
   {
-    id: 'sophisticated-1',
-    category: 'Sophisticated',
-    name: 'Playfair Display & Lato',
-    heading: 'Playfair Display',
-    body: 'Lato',
-    recommended: false
-  },
-  {
-    id: 'sophisticated-2',
-    category: 'Sophisticated',
-    name: 'Cormorant & Source Sans',
-    heading: 'Cormorant',
-    body: 'Source Sans',
-    recommended: false
-  },
-  {
-    id: 'friendly-1',
-    category: 'Friendly',
-    name: 'Nunito & Open Sans',
-    heading: 'Nunito',
-    body: 'Open Sans',
-    recommended: false
-  },
-  {
-    id: 'friendly-2',
-    category: 'Friendly',
-    name: 'Poppins & Roboto',
+    id: 'geometric',
+    category: 'Sans-Serif',
+    name: 'Geometric',
     heading: 'Poppins',
-    body: 'Roboto',
+    body: 'Poppins',
+    headingId: 'poppins',
+    bodyId: 'poppins',
+    headingWeight: 600,
+    bodyWeight: 400,
     recommended: false
   },
   {
-    id: 'bold-1',
-    category: 'Bold',
-    name: 'Bebas Neue & Roboto',
-    heading: 'Bebas Neue',
-    body: 'Roboto',
+    id: 'tech',
+    category: 'Sans-Serif',
+    name: 'Tech',
+    heading: 'Space Grotesk',
+    body: 'Work Sans',
+    headingId: 'space-grotesk',
+    bodyId: 'work-sans',
+    headingWeight: 700,
+    bodyWeight: 400,
     recommended: false
   },
   {
-    id: 'bold-2',
-    category: 'Bold',
-    name: 'Oswald & Lato',
-    heading: 'Oswald',
+    id: 'friendly',
+    category: 'Sans-Serif',
+    name: 'Friendly',
+    heading: 'Nunito Sans',
+    body: 'Nunito Sans',
+    headingId: 'nunito-sans',
+    bodyId: 'nunito-sans',
+    headingWeight: 700,
+    bodyWeight: 400,
+    recommended: false
+  },
+  // Serif Elegant
+  {
+    id: 'classic',
+    category: 'Serif',
+    name: 'Classic',
+    heading: 'Playfair Display',
+    body: 'Source Sans Pro',
+    headingId: 'playfair-display',
+    bodyId: 'source-sans-pro',
+    headingWeight: 700,
+    bodyWeight: 400,
+    recommended: false
+  },
+  {
+    id: 'editorial',
+    category: 'Serif',
+    name: 'Editorial',
+    heading: 'Cormorant Garamond',
     body: 'Lato',
+    headingId: 'cormorant-garamond',
+    bodyId: 'lato',
+    headingWeight: 600,
+    bodyWeight: 400,
+    recommended: false
+  },
+  {
+    id: 'elegant',
+    category: 'Serif',
+    name: 'Elegant',
+    heading: 'Libre Baskerville',
+    body: 'Open Sans',
+    headingId: 'libre-baskerville',
+    bodyId: 'open-sans',
+    headingWeight: 700,
+    bodyWeight: 400,
+    recommended: false
+  },
+  {
+    id: 'literary',
+    category: 'Serif',
+    name: 'Literary',
+    heading: 'Merriweather',
+    body: 'Lato',
+    headingId: 'merriweather',
+    bodyId: 'lato',
+    headingWeight: 700,
+    bodyWeight: 400,
+    recommended: false
+  },
+  // Bold/Display
+  {
+    id: 'bold',
+    category: 'Display',
+    name: 'Bold',
+    heading: 'Bebas Neue',
+    body: 'Open Sans',
+    headingId: 'bebas-neue',
+    bodyId: 'open-sans',
+    headingWeight: 400,
+    bodyWeight: 400,
+    recommended: false
+  },
+  {
+    id: 'impact',
+    category: 'Display',
+    name: 'Impact',
+    heading: 'Oswald',
+    body: 'Roboto',
+    headingId: 'oswald',
+    bodyId: 'roboto',
+    headingWeight: 700,
+    bodyWeight: 400,
+    recommended: false
+  },
+  {
+    id: 'statement',
+    category: 'Display',
+    name: 'Statement',
+    heading: 'Anton',
+    body: 'Work Sans',
+    headingId: 'anton',
+    bodyId: 'work-sans',
+    headingWeight: 400,
+    bodyWeight: 400,
+    recommended: false
+  },
+  // Mix/Creative
+  {
+    id: 'creative',
+    category: 'Creative',
+    name: 'Creative',
+    heading: 'Bricolage Grotesque',
+    body: 'Inter',
+    headingId: 'bricolage-grotesque',
+    bodyId: 'inter',
+    headingWeight: 700,
+    bodyWeight: 400,
+    recommended: false
+  },
+  {
+    id: 'artsy',
+    category: 'Creative',
+    name: 'Artsy',
+    heading: 'Sora',
+    body: 'Manrope',
+    headingId: 'sora',
+    bodyId: 'manrope',
+    headingWeight: 600,
+    bodyWeight: 400,
+    recommended: false
+  },
+  {
+    id: 'trendy',
+    category: 'Creative',
+    name: 'Trendy',
+    heading: 'Outfit',
+    body: 'Barlow',
+    headingId: 'outfit',
+    bodyId: 'barlow',
+    headingWeight: 700,
+    bodyWeight: 400,
     recommended: false
   }
 ];
