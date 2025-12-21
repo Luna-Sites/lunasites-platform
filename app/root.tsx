@@ -11,6 +11,35 @@ import type { Route } from "./+types/root";
 import "./app.css";
 import { AuthProvider } from "./contexts/AuthContext";
 
+// All fonts used in wizard font presets
+const wizardFonts = [
+  "Inter:wght@400;500;600;700",
+  "Roboto:wght@400;500;700",
+  "Open+Sans:wght@400;500;600;700",
+  "Lato:wght@400;700",
+  "Montserrat:wght@400;500;600;700",
+  "Source+Sans+3:wght@400;600;700",
+  "Nunito+Sans:wght@400;500;600;700",
+  "Work+Sans:wght@400;500;600;700",
+  "DM+Sans:wght@400;500;700",
+  "Poppins:wght@400;500;600;700",
+  "Playfair+Display:wght@400;500;600;700",
+  "Cormorant+Garamond:wght@400;500;600;700",
+  "Libre+Baskerville:wght@400;700",
+  "Merriweather:wght@400;700",
+  "Crimson+Pro:wght@400;500;600;700",
+  "Bebas+Neue",
+  "Oswald:wght@400;500;600;700",
+  "Anton",
+  "Space+Grotesk:wght@400;500;600;700",
+  "Outfit:wght@400;500;600;700",
+  "Sora:wght@400;500;600;700",
+  "Fira+Sans:wght@400;500;600;700",
+  "Barlow:wght@400;500;600;700",
+  "Manrope:wght@400;500;600;700",
+  "Bricolage+Grotesque:wght@400;500;600;700",
+].join("&family=");
+
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   {
@@ -20,7 +49,7 @@ export const links: Route.LinksFunction = () => [
   },
   {
     rel: "stylesheet",
-    href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
+    href: `https://fonts.googleapis.com/css2?family=${wizardFonts}&display=swap`,
   },
 ];
 
