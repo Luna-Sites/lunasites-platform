@@ -398,10 +398,12 @@ router.patch(
   '/:siteId/theme',
   authMiddleware,
   async (req: AuthenticatedRequest, res: Response) => {
+    console.log('=== UPDATE THEME ENDPOINT CALLED ===');
     try {
       const { siteId } = req.params;
       const userId = req.user!.uid;
       const { presetId, overrides, darkMode } = req.body;
+      console.log(`Updating theme for site: ${siteId}`, { presetId, overrides, darkMode });
 
       // Verify site ownership
       const site = await sitesService.getSiteBySiteId(siteId);
