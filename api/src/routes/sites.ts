@@ -445,10 +445,12 @@ router.patch(
           },
         };
 
-        // Update the controlpanel record
+        // Upsert the controlpanel record
         await sitePool.query(
-          "UPDATE controlpanel SET data = $1 WHERE id = 'site'",
-          [JSON.stringify(updatedData)]
+          `INSERT INTO controlpanel (id, title, "group", schema, data)
+           VALUES ('site', 'Site Settings', 'site', '{}', $1)
+           ON CONFLICT (id) DO UPDATE SET data = $1`,
+          [updatedData]
         );
 
         return res.json({ success: true, message: 'Theme updated' });
