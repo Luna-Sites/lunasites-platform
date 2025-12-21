@@ -79,6 +79,7 @@ export default function TemplatePreview({
         siteId={sourceSiteId}
         mode="full"
         className="aspect-[16/10]"
+        colors={colors}
       />
     );
   }

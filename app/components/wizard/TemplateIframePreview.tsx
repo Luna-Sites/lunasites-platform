@@ -5,12 +5,14 @@ interface TemplateIframePreviewProps {
   siteId: string;
   mode: 'card' | 'full';
   className?: string;
+  colors?: string[]; // [primary, secondary, accent, background]
 }
 
 export default function TemplateIframePreview({
   siteId,
   mode,
-  className = ''
+  className = '',
+  colors
 }: TemplateIframePreviewProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -20,13 +22,28 @@ export default function TemplateIframePreview({
   const animationRef = useRef<number>();
   const scrollPosRef = useRef(0);
 
-  const siteUrl = `https://${siteId}.luna-sites.com`;
+  // Build URL with color query params for preview
+  const buildSiteUrl = () => {
+    const baseUrl = `https://${siteId}.luna-sites.com`;
+    if (!colors || colors.length === 0) return baseUrl;
+
+    const params = new URLSearchParams();
+    if (colors[0]) params.set('primary', colors[0]);
+    if (colors[1]) params.set('secondary', colors[1]);
+    if (colors[2]) params.set('accent', colors[2]);
+    if (colors[3]) params.set('background', colors[3]);
+
+    const queryString = params.toString();
+    return queryString ? `${baseUrl}?${queryString}` : baseUrl;
+  };
+
+  const siteUrl = buildSiteUrl();
 
   useEffect(() => {
-    // Reset state when siteId changes
+    // Reset state when siteId or colors change
     setLoading(true);
     setError(false);
-  }, [siteId]);
+  }, [siteId, colors]);
 
   // Hover-based scroll animation for card mode
   useEffect(() => {
@@ -121,6 +138,7 @@ export default function TemplateIframePreview({
       )}
 
       <iframe
+        key={siteUrl}
         ref={iframeRef}
         src={siteUrl}
         title="Template preview"

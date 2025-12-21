@@ -82,14 +82,14 @@ export const templates = [
 ];
 
 export const colorPalettes = [
-  { id: 'purple-blue', name: 'Purple & Blue', colors: ['#8B5CF6', '#3B82F6', '#0EA5E9'] },
-  { id: 'emerald-teal', name: 'Emerald & Teal', colors: ['#10B981', '#14B8A6', '#06B6D4'] },
-  { id: 'rose-pink', name: 'Rose & Pink', colors: ['#F43F5E', '#EC4899', '#A855F7'] },
-  { id: 'orange-amber', name: 'Orange & Amber', colors: ['#F97316', '#F59E0B', '#EAB308'] },
-  { id: 'slate-blue', name: 'Slate & Blue', colors: ['#475569', '#3B82F6', '#1E293B'] },
-  { id: 'monochrome', name: 'Monochrome', colors: ['#1F2937', '#6B7280', '#F3F4F6'] },
-  { id: 'forest-moss', name: 'Forest & Moss', colors: ['#059669', '#65A30D', '#15803D'] },
-  { id: 'sunset', name: 'Sunset', colors: ['#DC2626', '#EA580C', '#FBBF24'] }
+  { id: 'purple-blue', name: 'Purple & Blue', colors: ['#8B5CF6', '#3B82F6', '#0EA5E9', '#FFFFFF'] },
+  { id: 'emerald-teal', name: 'Emerald & Teal', colors: ['#10B981', '#14B8A6', '#06B6D4', '#FFFFFF'] },
+  { id: 'rose-pink', name: 'Rose & Pink', colors: ['#F43F5E', '#EC4899', '#A855F7', '#FFF1F2'] },
+  { id: 'orange-amber', name: 'Orange & Amber', colors: ['#F97316', '#F59E0B', '#EAB308', '#FFFBEB'] },
+  { id: 'slate-blue', name: 'Slate & Blue', colors: ['#475569', '#3B82F6', '#1E293B', '#F8FAFC'] },
+  { id: 'monochrome', name: 'Monochrome', colors: ['#1F2937', '#6B7280', '#F3F4F6', '#FFFFFF'] },
+  { id: 'forest-moss', name: 'Forest & Moss', colors: ['#059669', '#65A30D', '#15803D', '#F0FDF4'] },
+  { id: 'sunset', name: 'Sunset', colors: ['#DC2626', '#EA580C', '#FBBF24', '#FEF2F2'] }
 ];
 
 export const fontPairs = [
