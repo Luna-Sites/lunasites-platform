@@ -456,6 +456,12 @@ router.patch(
         );
         console.log(`Theme upserted for ${siteId}, rows affected:`, upsertResult.rowCount);
 
+        // Verify what was saved
+        const verifyResult = await sitePool.query(
+          "SELECT data FROM controlpanel WHERE id = 'site'"
+        );
+        console.log(`Verify controlpanel data for ${siteId}:`, JSON.stringify(verifyResult.rows[0]?.data, null, 2));
+
         return res.json({ success: true, message: 'Theme updated' });
       } finally {
         await sitePool.end();
