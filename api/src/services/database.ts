@@ -176,14 +176,6 @@ export async function cloneDatabase(sourceSiteId: string, targetSiteId: string):
   try {
     await client.connect();
 
-    // Terminate connections to source database (required for TEMPLATE)
-    await client.query(`
-      SELECT pg_terminate_backend(pg_stat_activity.pid)
-      FROM pg_stat_activity
-      WHERE pg_stat_activity.datname = $1
-      AND pid <> pg_backend_pid()
-    `, [sourceDbName]);
-
     // Check if target already exists
     const checkResult = await client.query(
       'SELECT 1 FROM pg_database WHERE datname = $1',
@@ -191,13 +183,45 @@ export async function cloneDatabase(sourceSiteId: string, targetSiteId: string):
     );
 
     if (checkResult.rows.length > 0) {
-      // Drop existing target database
+      // Terminate connections to target before dropping
+      await client.query(`
+        SELECT pg_terminate_backend(pg_stat_activity.pid)
+        FROM pg_stat_activity
+        WHERE pg_stat_activity.datname = $1
+        AND pid <> pg_backend_pid()
+      `, [targetDbName]);
       await client.query(`DROP DATABASE "${targetDbName}"`);
     }
 
-    // Clone database using TEMPLATE
-    await client.query(`CREATE DATABASE "${targetDbName}" TEMPLATE "${sourceDbName}"`);
-    console.log(`Cloned database ${sourceDbName} to ${targetDbName}`);
+    // Retry loop for cloning (connections might reconnect quickly)
+    const maxRetries = 3;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // Terminate all connections to source database (required for TEMPLATE)
+        await client.query(`
+          SELECT pg_terminate_backend(pg_stat_activity.pid)
+          FROM pg_stat_activity
+          WHERE pg_stat_activity.datname = $1
+          AND pid <> pg_backend_pid()
+        `, [sourceDbName]);
+
+        // Small delay to allow connections to fully close
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Clone database using TEMPLATE
+        await client.query(`CREATE DATABASE "${targetDbName}" TEMPLATE "${sourceDbName}"`);
+        console.log(`Cloned database ${sourceDbName} to ${targetDbName}`);
+        break; // Success, exit loop
+      } catch (err: any) {
+        if (err.code === '55006' && attempt < maxRetries) {
+          // Error 55006: source database is being accessed by other users
+          console.log(`Clone attempt ${attempt} failed, retrying...`);
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Increasing delay
+          continue;
+        }
+        throw err; // Rethrow if max retries reached or different error
+      }
+    }
 
     // Return connection string for new database
     const newDbInfo = { ...baseInfo, database: targetDbName };
