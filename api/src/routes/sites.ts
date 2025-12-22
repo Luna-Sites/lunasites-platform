@@ -3,6 +3,7 @@ import pg from 'pg';
 import { AuthenticatedRequest, authMiddleware } from '../middleware/auth.js';
 import * as sitesService from '../services/sites.js';
 import * as renderService from '../services/render.js';
+import * as cloudflareService from '../services/cloudflare.js';
 import * as databaseService from '../services/database.js';
 import * as masterDbService from '../services/masterDb.js';
 import * as siteBootstrap from '../services/siteBootstrap.js';
@@ -437,70 +438,63 @@ router.post(
         return res.status(409).json({ error: 'Domain is already in use by another site' });
       }
 
-      // Add domain to Render
-      let cnameTarget: string;
-      let serviceIdToUse: string;
-
-      if (site.renderServiceId && site.renderServiceId !== 'multi-tenant') {
-        // Single-tenant mode: add to site's own Render service
-        serviceIdToUse = site.renderServiceId;
-        const renderUrl = site.renderUrl || `${siteId}.${config.baseDomain}`;
-        cnameTarget = renderUrl.replace(/^https?:\/\//, '');
-      } else {
-        // Multi-tenant mode: add to the shared worker service
-        if (!config.render.workerServiceId) {
-          return res.status(500).json({ error: 'Worker service not configured. Please set RENDER_WORKER_SERVICE_ID.' });
-        }
-        if (!config.render.workerServiceUrl) {
-          return res.status(500).json({ error: 'Worker service URL not configured. Please set RENDER_WORKER_SERVICE_URL.' });
-        }
-        serviceIdToUse = config.render.workerServiceId;
-        // CNAME should point to the Render worker service URL (e.g., lunacms-worker.onrender.com)
-        cnameTarget = config.render.workerServiceUrl;
+      // Check if Cloudflare is configured
+      if (!cloudflareService.isConfigured()) {
+        return res.status(500).json({
+          error: 'Cloudflare not configured. Please set CLOUDFLARE_API_TOKEN, CLOUDFLARE_ZONE_ID, and CLOUDFLARE_ORIGIN_SERVER.'
+        });
       }
 
-      console.log(`[CustomDomain] Adding ${domain} to Render service ${serviceIdToUse}`);
+      // Add domain to Cloudflare (Custom Hostname)
+      console.log(`[CustomDomain] Adding ${domain} to Cloudflare`);
+      let cloudflareHostname;
+      let cloudflareHostnameId: string | undefined;
 
       try {
-        // Add the domain to Render
-        await renderService.addCustomDomain(serviceIdToUse, domain);
-        console.log(`[CustomDomain] Successfully added ${domain} to Render`);
+        cloudflareHostname = await cloudflareService.addCustomHostname(domain);
+        cloudflareHostnameId = cloudflareHostname.id;
+        console.log(`[CustomDomain] Successfully added ${domain} to Cloudflare, ID: ${cloudflareHostname.id}`);
 
         // If it's an apex domain, also add the www subdomain
         if (!domain.startsWith('www.')) {
           const wwwDomain = `www.${domain}`;
           console.log(`[CustomDomain] Also adding www subdomain: ${wwwDomain}`);
           try {
-            await renderService.addCustomDomain(serviceIdToUse, wwwDomain);
-            console.log(`[CustomDomain] Successfully added ${wwwDomain} to Render`);
+            await cloudflareService.addCustomHostname(wwwDomain);
+            console.log(`[CustomDomain] Successfully added ${wwwDomain} to Cloudflare`);
           } catch (wwwError) {
             // It's okay if www fails (might already exist or other reason)
             console.log(`[CustomDomain] Note: Failed to add ${wwwDomain} (may already exist):`, wwwError);
           }
         }
-      } catch (renderError) {
-        console.error(`[CustomDomain] Failed to add domain to Render:`, renderError);
+      } catch (cloudflareError) {
+        console.error(`[CustomDomain] Failed to add domain to Cloudflare:`, cloudflareError);
         return res.status(500).json({
-          error: 'Failed to add domain to Render service',
-          details: renderError instanceof Error ? renderError.message : 'Unknown error'
+          error: 'Failed to add domain to Cloudflare',
+          details: cloudflareError instanceof Error ? cloudflareError.message : 'Unknown error'
         });
       }
 
-      // Save to Firestore
-      await sitesService.setCustomDomain(site.id, domain);
+      // Save to Firestore (with Cloudflare hostname ID)
+      await sitesService.setCustomDomain(site.id, domain, cloudflareHostnameId);
 
       // Save to master_sites (but not activated yet)
       await masterDbService.setMasterSiteCustomDomain(siteId, domain);
+
+      // Get CNAME target for DNS instructions
+      const cnameTarget = cloudflareService.getCnameTarget();
 
       return res.json({
         success: true,
         domain,
         status: 'pending',
+        cloudflareStatus: cloudflareHostname.status,
+        sslStatus: cloudflareHostname.ssl.status,
         dnsInstructions: {
           type: 'CNAME',
           host: domain.startsWith('www.') ? 'www' : '@',
           value: cnameTarget,
-          note: 'DNS propagation can take up to 48 hours.',
+          note: 'Adaugă un CNAME record care pointează către ' + cnameTarget + '. Propagarea DNS poate dura până la 48 ore.',
         },
       });
     } catch (error) {
@@ -532,46 +526,28 @@ router.get(
         return res.json({ customDomain: null });
       }
 
-      // Determine which Render service to check
-      let serviceIdToUse: string | null = null;
-      let cnameTarget: string;
+      // Get CNAME target from Cloudflare config
+      const cnameTarget = cloudflareService.getCnameTarget();
 
-      if (site.renderServiceId && site.renderServiceId !== 'multi-tenant') {
-        serviceIdToUse = site.renderServiceId;
-        const renderUrl = site.renderUrl || `${siteId}.${config.baseDomain}`;
-        cnameTarget = renderUrl.replace(/^https?:\/\//, '');
-      } else if (config.render.workerServiceId) {
-        serviceIdToUse = config.render.workerServiceId;
-        // CNAME should point to the Render worker service URL
-        cnameTarget = config.render.workerServiceUrl || config.baseDomain;
-      } else {
-        cnameTarget = config.baseDomain;
-      }
+      // Get status from Cloudflare
+      let cloudflareStatus: 'pending' | 'active' | 'moved' | 'deleted' = 'pending';
+      let sslStatus: string = 'pending';
 
-      // Get verification and SSL status from Render
-      let verificationStatus: 'unverified' | 'verified' = 'unverified';
-      let certificateStatus: 'pending' | 'issued' | 'error' = 'pending';
-
-      if (serviceIdToUse) {
+      if (site.customDomain.cloudflareHostnameId) {
         try {
-          const renderDomain = await renderService.getCustomDomain(
-            serviceIdToUse,
-            site.customDomain.domain
-          );
-          if (renderDomain) {
-            verificationStatus = renderDomain.verificationStatus;
-          }
-
-          if (verificationStatus === 'verified') {
-            certificateStatus = await renderService.getDomainCertificateStatus(
-              serviceIdToUse,
-              site.customDomain.domain
-            );
+          const cfHostname = await cloudflareService.getCustomHostname(site.customDomain.cloudflareHostnameId);
+          if (cfHostname) {
+            cloudflareStatus = cfHostname.status;
+            sslStatus = cfHostname.ssl.status;
           }
         } catch (err) {
-          console.error('Error fetching Render domain status:', err);
+          console.error('Error fetching Cloudflare domain status:', err);
         }
       }
+
+      // Map Cloudflare status to our verification status
+      const verificationStatus = cloudflareStatus === 'active' ? 'verified' : 'unverified';
+      const certificateStatus = sslStatus === 'active' ? 'issued' : 'pending';
 
       return res.json({
         customDomain: {
@@ -579,6 +555,8 @@ router.get(
           status: site.customDomain.status,
           verificationStatus,
           certificateStatus,
+          cloudflareStatus,
+          sslStatus,
           addedAt: site.customDomain.addedAt.toDate().toISOString(),
           verifiedAt: site.customDomain.verifiedAt?.toDate().toISOString(),
           activatedAt: site.customDomain.activatedAt?.toDate().toISOString(),
@@ -597,7 +575,7 @@ router.get(
   }
 );
 
-// Verify DNS for custom domain (2-step verification)
+// Verify/refresh custom domain status from Cloudflare
 router.post(
   '/:siteId/domains/verify',
   authMiddleware,
@@ -644,89 +622,36 @@ router.post(
       }
 
       // ============================================
-      // STEP 2: Verify DNS via Render API
+      // STEP 2: Check Cloudflare status
       // ============================================
       let step2Passed = false;
-      let serviceIdToUse: string;
+      let cloudflareStatus = 'pending';
+      let sslStatus = 'pending';
 
-      if (site.renderServiceId && site.renderServiceId !== 'multi-tenant') {
-        serviceIdToUse = site.renderServiceId;
-      } else {
-        if (!config.render.workerServiceId) {
-          console.error('RENDER_WORKER_SERVICE_ID is not configured!');
-          return res.status(500).json({ error: 'Worker service not configured. Please set RENDER_WORKER_SERVICE_ID environment variable.' });
-        }
-        serviceIdToUse = config.render.workerServiceId;
+      if (!site.customDomain.cloudflareHostnameId) {
+        console.log('No Cloudflare hostname ID found, domain may not have been added to Cloudflare');
+        return res.json({
+          verified: false,
+          steps: {
+            domainAssigned: step1Passed,
+            dnsConfigured: false,
+          },
+          message: 'Domain not found in Cloudflare. Please remove and re-add the domain.',
+        });
       }
 
-      console.log(`Using Render service ID: ${serviceIdToUse}`);
-
-      // First, check if domain exists on Render - if not, add it
-      console.log(`Step 2 - Checking if domain exists on Render service ${serviceIdToUse}...`);
-      let existingDomain;
       try {
-        existingDomain = await renderService.getCustomDomain(serviceIdToUse, domainToVerify);
+        const cfHostname = await cloudflareService.getCustomHostname(site.customDomain.cloudflareHostnameId);
+        if (cfHostname) {
+          cloudflareStatus = cfHostname.status;
+          sslStatus = cfHostname.ssl.status;
+          console.log(`Cloudflare status: ${cloudflareStatus}, SSL status: ${sslStatus}`);
+
+          // Domain is verified if Cloudflare status is 'active'
+          step2Passed = cloudflareStatus === 'active';
+        }
       } catch (err) {
-        console.error(`Error checking domain on Render:`, err);
-        existingDomain = null;
-      }
-
-      if (!existingDomain) {
-        console.log(`Domain ${domainToVerify} not found on Render, adding it now...`);
-        try {
-          await renderService.addCustomDomain(serviceIdToUse, domainToVerify);
-          console.log(`Domain ${domainToVerify} successfully added to Render service ${serviceIdToUse}`);
-
-          // If it's an apex domain, also add the www subdomain
-          if (!domainToVerify.startsWith('www.')) {
-            const wwwDomain = `www.${domainToVerify}`;
-            console.log(`Also adding www subdomain: ${wwwDomain}`);
-            try {
-              await renderService.addCustomDomain(serviceIdToUse, wwwDomain);
-              console.log(`Successfully added ${wwwDomain} to Render`);
-            } catch (wwwError) {
-              console.log(`Note: Failed to add ${wwwDomain} (may already exist):`, wwwError);
-            }
-          }
-        } catch (addError) {
-          console.error(`Failed to add domain to Render:`, addError);
-          return res.status(500).json({
-            error: 'Failed to add domain to Render service',
-            details: addError instanceof Error ? addError.message : 'Unknown error'
-          });
-        }
-      } else {
-        console.log(`Domain ${domainToVerify} already exists on Render with status: ${existingDomain.verificationStatus}`);
-
-        // If domain exists but is apex, ensure www is also added
-        if (!domainToVerify.startsWith('www.')) {
-          const wwwDomain = `www.${domainToVerify}`;
-          try {
-            const wwwExists = await renderService.getCustomDomain(serviceIdToUse, wwwDomain);
-            if (!wwwExists) {
-              console.log(`www subdomain ${wwwDomain} not found, adding it...`);
-              await renderService.addCustomDomain(serviceIdToUse, wwwDomain);
-              console.log(`Successfully added ${wwwDomain} to Render`);
-            }
-          } catch (wwwError) {
-            console.log(`Note: Error handling www subdomain:`, wwwError);
-          }
-        }
-      }
-
-      // Now verify DNS
-      console.log(`Step 2 - Verifying DNS via Render API...`);
-      let renderResult;
-      try {
-        renderResult = await renderService.verifyCustomDomain(
-          serviceIdToUse,
-          domainToVerify
-        );
-        console.log('Render verification result:', renderResult);
-        step2Passed = renderResult.verified;
-      } catch (verifyError) {
-        console.error(`Error verifying DNS:`, verifyError);
-        step2Passed = false;
+        console.error('Error checking Cloudflare status:', err);
       }
 
       // If both steps pass, update status
@@ -742,8 +667,10 @@ router.post(
           domainAssigned: step1Passed,
           dnsConfigured: step2Passed,
         },
+        cloudflareStatus,
+        sslStatus,
         message: step2Passed
-          ? 'DNS verified successfully. SSL certificate is being issued.'
+          ? 'Domain verified successfully. SSL certificate is active.'
           : 'DNS not yet configured. Please add the CNAME record at your domain registrar.',
       });
     } catch (error) {
@@ -775,38 +702,29 @@ router.post(
         return res.status(400).json({ error: 'No custom domain configured' });
       }
 
-      // Determine which Render service to check
-      let serviceIdToUse: string | null = null;
-      if (site.renderServiceId && site.renderServiceId !== 'multi-tenant') {
-        serviceIdToUse = site.renderServiceId;
-      } else if (config.render.workerServiceId) {
-        serviceIdToUse = config.render.workerServiceId;
-      }
+      // Check Cloudflare status before activating
+      if (site.customDomain.cloudflareHostnameId) {
+        try {
+          const cfHostname = await cloudflareService.getCustomHostname(site.customDomain.cloudflareHostnameId);
 
-      // Check prerequisites
-      if (serviceIdToUse) {
-        const renderDomain = await renderService.getCustomDomain(
-          serviceIdToUse,
-          site.customDomain.domain
-        );
+          if (!cfHostname || cfHostname.status !== 'active') {
+            return res.status(400).json({
+              error: 'Domain not active in Cloudflare',
+              message: 'Please wait for DNS verification to complete.',
+              cloudflareStatus: cfHostname?.status || 'unknown',
+            });
+          }
 
-        if (!renderDomain || renderDomain.verificationStatus !== 'verified') {
-          return res.status(400).json({
-            error: 'DNS not verified',
-            message: 'Please verify DNS configuration before activating.',
-          });
-        }
-
-        const certStatus = await renderService.getDomainCertificateStatus(
-          serviceIdToUse,
-          site.customDomain.domain
-        );
-
-        if (certStatus !== 'issued') {
-          return res.status(400).json({
-            error: 'SSL certificate not ready',
-            message: 'SSL certificate is still being issued. Please wait.',
-          });
+          if (cfHostname.ssl.status !== 'active') {
+            return res.status(400).json({
+              error: 'SSL certificate not ready',
+              message: 'SSL certificate is still being issued. Please wait.',
+              sslStatus: cfHostname.ssl.status,
+            });
+          }
+        } catch (err) {
+          console.error('Error checking Cloudflare status:', err);
+          return res.status(500).json({ error: 'Failed to check domain status' });
         }
       }
 
@@ -852,17 +770,25 @@ router.delete(
 
       const domainToRemove = site.customDomain.domain;
 
-      // Determine which Render service to use
-      let serviceIdToUse: string | null = null;
-      if (site.renderServiceId && site.renderServiceId !== 'multi-tenant') {
-        serviceIdToUse = site.renderServiceId;
-      } else if (config.render.workerServiceId) {
-        serviceIdToUse = config.render.workerServiceId;
-      }
+      // Remove from Cloudflare
+      if (site.customDomain.cloudflareHostnameId) {
+        try {
+          await cloudflareService.deleteCustomHostname(site.customDomain.cloudflareHostnameId);
+          console.log(`[CustomDomain] Deleted ${domainToRemove} from Cloudflare`);
 
-      // Remove from Render
-      if (serviceIdToUse) {
-        await renderService.deleteCustomDomain(serviceIdToUse, domainToRemove);
+          // Also try to delete www subdomain if it exists
+          if (!domainToRemove.startsWith('www.')) {
+            const wwwDomain = `www.${domainToRemove}`;
+            const wwwHostname = await cloudflareService.getCustomHostnameByName(wwwDomain);
+            if (wwwHostname) {
+              await cloudflareService.deleteCustomHostname(wwwHostname.id);
+              console.log(`[CustomDomain] Deleted ${wwwDomain} from Cloudflare`);
+            }
+          }
+        } catch (err) {
+          console.error('Error deleting from Cloudflare:', err);
+          // Continue with removal even if Cloudflare fails
+        }
       }
 
       // Remove from master_sites

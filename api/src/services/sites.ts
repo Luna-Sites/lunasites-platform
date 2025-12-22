@@ -9,6 +9,8 @@ export interface CustomDomainInfo {
   verifiedAt?: admin.firestore.Timestamp;
   activatedAt?: admin.firestore.Timestamp;
   errorMessage?: string;
+  // Cloudflare Custom Hostname ID
+  cloudflareHostnameId?: string;
 }
 
 export interface Site {
@@ -120,11 +122,12 @@ export async function checkSiteAvailability(siteId: string): Promise<boolean> {
 /**
  * Set custom domain for a site (initial add)
  */
-export async function setCustomDomain(id: string, domain: string): Promise<void> {
+export async function setCustomDomain(id: string, domain: string, cloudflareHostnameId?: string): Promise<void> {
   const customDomain: CustomDomainInfo = {
     domain,
     status: 'pending',
     addedAt: admin.firestore.Timestamp.now(),
+    cloudflareHostnameId,
   };
 
   await updateSite(id, { customDomain });
