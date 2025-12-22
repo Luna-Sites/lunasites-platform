@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { /* ArrowRight, */ Globe } from "lucide-react";
+import { ArrowRight, Globe } from "lucide-react";
 import { getPublicTemplates, type PublicTemplate } from "../../lib/api";
 import WizardProgress from "./WizardProgress";
 import TemplateIframePreview from "./TemplateIframePreview";
@@ -43,11 +43,11 @@ export default function WizardStep1({
         />
         <div className="mb-12 text-center">
           <p className="text-slate-600 mb-8 mt-8">
-            Select a template to customize
+            Select a template to customize or start with a blank canvas
           </p>
 
           {/* Blank Canvas Button */}
-          {/* <div className="flex justify-center mb-12">
+          <div className="flex justify-center mb-12">
             <button
               onClick={() => onTemplateSelect("blank")}
               className="w-full max-w-md p-6 rounded-2xl border-2 border-dashed border-purple-300 hover:border-purple-500 hover:bg-purple-50/50 transition-all group"
@@ -64,7 +64,7 @@ export default function WizardStep1({
                 <ArrowRight className="size-5 text-purple-600 group-hover:translate-x-1 transition-transform" />
               </div>
             </button>
-          </div> */}
+          </div>
         </div>
 
         {/* Loading State */}
