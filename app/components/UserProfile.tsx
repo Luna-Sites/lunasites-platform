@@ -26,9 +26,18 @@ export default function UserProfile() {
         onClick={() => setShowDropdown(!showDropdown)}
         className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition-colors"
       >
-        <div className="w-8 h-8 bg-[#0052de] rounded-full flex items-center justify-center text-white font-semibold">
-          {user.email?.[0]?.toUpperCase() || 'U'}
-        </div>
+        {user.photoURL ? (
+          <img
+            src={user.photoURL}
+            alt={user.email || 'User'}
+            className="w-8 h-8 rounded-full"
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          <div className="w-8 h-8 bg-[#0052de] rounded-full flex items-center justify-center text-white font-semibold">
+            {user.email?.[0]?.toUpperCase() || 'U'}
+          </div>
+        )}
         <span className="text-gray-700">{user.email}</span>
         <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

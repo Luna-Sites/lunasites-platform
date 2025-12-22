@@ -153,9 +153,18 @@ export default function Sites() {
 
             <div className="flex items-center gap-4">
               <div className="relative group">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#5A318F] to-[#D920B7] flex items-center justify-center text-white text-sm cursor-pointer font-semibold">
-                  {userInitials}
-                </div>
+                {user.photoURL ? (
+                  <img
+                    src={user.photoURL}
+                    alt={user.email || 'User'}
+                    className="w-8 h-8 rounded-full cursor-pointer"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#5A318F] to-[#D920B7] flex items-center justify-center text-white text-sm cursor-pointer font-semibold">
+                    {userInitials}
+                  </div>
+                )}
                 <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
                   <button
                     onClick={() => (window.location.href = '/profile')}

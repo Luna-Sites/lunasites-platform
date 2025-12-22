@@ -1,9 +1,14 @@
-import { Check, ChevronRight, ChevronDown } from 'lucide-react';
-import { colorPalettes, fontPairs, buttonStyles, inputStyles } from '../../data/wizard-data';
+import { Check, ChevronRight, ChevronDown } from "lucide-react";
+import {
+  colorPalettes,
+  fontPairs,
+  buttonStyles,
+  inputStyles,
+} from "../../data/wizard-data";
 
 interface StylePanelProps {
   selectedPalette: string | null;
-  selectedFont: string;
+  selectedFont: string | null;
   selectedButtonStyle: string;
   selectedInputStyle: string;
   expandedSection: string | null;
@@ -36,26 +41,30 @@ export default function StylePanel({
   onExpandSection,
   onCustomColorChange,
   onBaseFontSizeChange,
-  onBaseFontSizeMobileChange
+  onBaseFontSizeMobileChange,
 }: StylePanelProps) {
-  const currentFontPair = fontPairs.find(f => f.id === selectedFont);
-  const currentPalette = colorPalettes.find(p => p.id === selectedPalette);
-  const currentButtonStyle = buttonStyles.find(s => s.id === selectedButtonStyle);
-  const currentInputStyle = inputStyles.find(s => s.id === selectedInputStyle);
+  const currentFontPair = fontPairs.find((f) => f.id === selectedFont);
+  const currentPalette = colorPalettes.find((p) => p.id === selectedPalette);
+  const currentButtonStyle = buttonStyles.find(
+    (s) => s.id === selectedButtonStyle
+  );
+  const currentInputStyle = inputStyles.find(
+    (s) => s.id === selectedInputStyle
+  );
 
   return (
     <div className="flex flex-col w-full">
-      <h2 className="text-2xl text-slate-900 mb-6 font-bold">Site Styles</h2>
-
       <div className="space-y-4">
         {/* Themes Section */}
         <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
           <button
-            onClick={() => onExpandSection(expandedSection === 'themes' ? null : 'themes')}
+            onClick={() =>
+              onExpandSection(expandedSection === "themes" ? null : "themes")
+            }
             className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-100 transition-colors"
           >
             <span className="text-sm font-medium text-slate-700">Themes</span>
-            {expandedSection === 'themes' ? (
+            {expandedSection === "themes" ? (
               <ChevronDown className="w-4 h-4 text-slate-400" />
             ) : (
               <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -90,7 +99,7 @@ export default function StylePanel({
           </div>
 
           {/* Expanded Themes Content */}
-          {expandedSection === 'themes' && (
+          {expandedSection === "themes" && (
             <div className="px-4 pb-4 space-y-2 max-h-96 overflow-y-auto">
               {colorPalettes.map((palette) => (
                 <button
@@ -101,8 +110,8 @@ export default function StylePanel({
                   }}
                   className={`w-full p-3 rounded-lg cursor-pointer transition-all duration-200 border-2 ${
                     selectedPalette === palette.id
-                      ? 'border-purple-500 bg-white'
-                      : 'border-transparent bg-white hover:border-slate-300'
+                      ? "border-purple-500 bg-white"
+                      : "border-transparent bg-white hover:border-slate-300"
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -115,7 +124,9 @@ export default function StylePanel({
                         />
                       ))}
                     </div>
-                    <p className="text-sm text-slate-700 flex-1 text-left font-medium">{palette.name}</p>
+                    <p className="text-sm text-slate-700 flex-1 text-left font-medium">
+                      {palette.name}
+                    </p>
                     {selectedPalette === palette.id && (
                       <Check className="w-4 h-4 text-purple-600" />
                     )}
@@ -129,11 +140,13 @@ export default function StylePanel({
         {/* Fonts Section */}
         <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
           <button
-            onClick={() => onExpandSection(expandedSection === 'fonts' ? null : 'fonts')}
+            onClick={() =>
+              onExpandSection(expandedSection === "fonts" ? null : "fonts")
+            }
             className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-100 transition-colors"
           >
             <span className="text-sm font-medium text-slate-700">Fonts</span>
-            {expandedSection === 'fonts' ? (
+            {expandedSection === "fonts" ? (
               <ChevronDown className="w-4 h-4 text-slate-400" />
             ) : (
               <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -148,7 +161,7 @@ export default function StylePanel({
                 style={{
                   fontFamily: currentFontPair?.heading,
                   fontWeight: currentFontPair?.headingWeight,
-                  fontSize: `${baseFontSize * 1.5}px`
+                  fontSize: `${baseFontSize * 1.5}px`,
                 }}
               >
                 Heading
@@ -158,7 +171,7 @@ export default function StylePanel({
                 style={{
                   fontFamily: currentFontPair?.body,
                   fontWeight: currentFontPair?.bodyWeight,
-                  fontSize: `${baseFontSize}px`
+                  fontSize: `${baseFontSize}px`,
                 }}
               >
                 This is your paragraph.
@@ -170,7 +183,7 @@ export default function StylePanel({
           </div>
 
           {/* Expanded Fonts Content */}
-          {expandedSection === 'fonts' && (
+          {expandedSection === "fonts" && (
             <div className="px-4 pb-4 space-y-2 max-h-96 overflow-y-auto">
               {fontPairs.map((font) => (
                 <button
@@ -181,8 +194,8 @@ export default function StylePanel({
                   }}
                   className={`w-full p-3 rounded-lg cursor-pointer transition-all duration-200 border-2 text-left ${
                     selectedFont === font.id
-                      ? 'border-purple-500 bg-white'
-                      : 'border-transparent bg-white hover:border-slate-300'
+                      ? "border-purple-500 bg-white"
+                      : "border-transparent bg-white hover:border-slate-300"
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -192,7 +205,7 @@ export default function StylePanel({
                         style={{
                           fontFamily: font.heading,
                           fontWeight: font.headingWeight,
-                          fontSize: '18px'
+                          fontSize: "18px",
                         }}
                       >
                         Heading
@@ -201,7 +214,7 @@ export default function StylePanel({
                         className="text-slate-600 text-sm"
                         style={{
                           fontFamily: font.body,
-                          fontWeight: font.bodyWeight
+                          fontWeight: font.bodyWeight,
                         }}
                       >
                         This is your paragraph.
@@ -223,7 +236,9 @@ export default function StylePanel({
         {/* Base Font Size Section */}
         <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
           <div className="px-4 py-3">
-            <span className="text-sm font-medium text-slate-700">Base Size</span>
+            <span className="text-sm font-medium text-slate-700">
+              Base Size
+            </span>
           </div>
           <div className="px-4 pb-4 space-y-3">
             {/* Desktop Size */}
@@ -231,7 +246,9 @@ export default function StylePanel({
               <span className="text-sm text-slate-600">Desktop</span>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => onBaseFontSizeChange(Math.max(12, baseFontSize - 1))}
+                  onClick={() =>
+                    onBaseFontSizeChange(Math.max(12, baseFontSize - 1))
+                  }
                   className="w-8 h-8 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-600 font-medium"
                 >
                   −
@@ -240,7 +257,9 @@ export default function StylePanel({
                   {baseFontSize}px
                 </span>
                 <button
-                  onClick={() => onBaseFontSizeChange(Math.min(24, baseFontSize + 1))}
+                  onClick={() =>
+                    onBaseFontSizeChange(Math.min(24, baseFontSize + 1))
+                  }
                   className="w-8 h-8 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-600 font-medium"
                 >
                   +
@@ -252,7 +271,11 @@ export default function StylePanel({
               <span className="text-sm text-slate-600">Mobile</span>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => onBaseFontSizeMobileChange(Math.max(12, baseFontSizeMobile - 1))}
+                  onClick={() =>
+                    onBaseFontSizeMobileChange(
+                      Math.max(12, baseFontSizeMobile - 1)
+                    )
+                  }
                   className="w-8 h-8 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-600 font-medium"
                 >
                   −
@@ -261,7 +284,11 @@ export default function StylePanel({
                   {baseFontSizeMobile}px
                 </span>
                 <button
-                  onClick={() => onBaseFontSizeMobileChange(Math.min(24, baseFontSizeMobile + 1))}
+                  onClick={() =>
+                    onBaseFontSizeMobileChange(
+                      Math.min(24, baseFontSizeMobile + 1)
+                    )
+                  }
                   className="w-8 h-8 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 flex items-center justify-center text-slate-600 font-medium"
                 >
                   +
@@ -274,11 +301,15 @@ export default function StylePanel({
         {/* Custom Colors Section */}
         <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
           <button
-            onClick={() => onExpandSection(expandedSection === 'colors' ? null : 'colors')}
+            onClick={() =>
+              onExpandSection(expandedSection === "colors" ? null : "colors")
+            }
             className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-100 transition-colors"
           >
-            <span className="text-sm font-medium text-slate-700">Custom Colors</span>
-            {expandedSection === 'colors' ? (
+            <span className="text-sm font-medium text-slate-700">
+              Custom Colors
+            </span>
+            {expandedSection === "colors" ? (
               <ChevronDown className="w-4 h-4 text-slate-400" />
             ) : (
               <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -304,18 +335,24 @@ export default function StylePanel({
                 </div>
               ))}
             </div>
-            <p className="text-xs text-slate-500 mt-2">Click any color to customize</p>
+            <p className="text-xs text-slate-500 mt-2">
+              Click any color to customize
+            </p>
           </div>
         </div>
 
         {/* Button Style Section */}
         <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
           <button
-            onClick={() => onExpandSection(expandedSection === 'buttons' ? null : 'buttons')}
+            onClick={() =>
+              onExpandSection(expandedSection === "buttons" ? null : "buttons")
+            }
             className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-100 transition-colors"
           >
-            <span className="text-sm font-medium text-slate-700">Button Style</span>
-            {expandedSection === 'buttons' ? (
+            <span className="text-sm font-medium text-slate-700">
+              Button Style
+            </span>
+            {expandedSection === "buttons" ? (
               <ChevronDown className="w-4 h-4 text-slate-400" />
             ) : (
               <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -328,7 +365,7 @@ export default function StylePanel({
               className="px-4 py-2 text-white text-center text-sm font-medium"
               style={{
                 backgroundColor: currentColors[0],
-                borderRadius: currentButtonStyle?.borderRadius
+                borderRadius: currentButtonStyle?.borderRadius,
               }}
             >
               {currentButtonStyle?.name}
@@ -336,7 +373,7 @@ export default function StylePanel({
           </div>
 
           {/* Expanded Button Styles Content */}
-          {expandedSection === 'buttons' && (
+          {expandedSection === "buttons" && (
             <div className="px-4 pb-4 space-y-2">
               {buttonStyles.map((style) => (
                 <button
@@ -347,8 +384,8 @@ export default function StylePanel({
                   }}
                   className={`w-full p-3 rounded-lg cursor-pointer transition-all duration-200 border-2 ${
                     selectedButtonStyle === style.id
-                      ? 'border-purple-500 bg-white'
-                      : 'border-transparent bg-white hover:border-slate-300'
+                      ? "border-purple-500 bg-white"
+                      : "border-transparent bg-white hover:border-slate-300"
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -357,7 +394,7 @@ export default function StylePanel({
                         className="px-4 py-2 text-white text-center text-sm font-medium"
                         style={{
                           backgroundColor: currentColors[0],
-                          borderRadius: style.borderRadius
+                          borderRadius: style.borderRadius,
                         }}
                       >
                         {style.name}
@@ -376,11 +413,15 @@ export default function StylePanel({
         {/* Input Style Section */}
         <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
           <button
-            onClick={() => onExpandSection(expandedSection === 'inputs' ? null : 'inputs')}
+            onClick={() =>
+              onExpandSection(expandedSection === "inputs" ? null : "inputs")
+            }
             className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-100 transition-colors"
           >
-            <span className="text-sm font-medium text-slate-700">Input Style</span>
-            {expandedSection === 'inputs' ? (
+            <span className="text-sm font-medium text-slate-700">
+              Input Style
+            </span>
+            {expandedSection === "inputs" ? (
               <ChevronDown className="w-4 h-4 text-slate-400" />
             ) : (
               <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -397,13 +438,13 @@ export default function StylePanel({
               style={{
                 borderRadius: currentInputStyle?.borderRadius,
                 border: currentInputStyle?.border,
-                borderBottom: currentInputStyle?.borderBottom
+                borderBottom: currentInputStyle?.borderBottom,
               }}
             />
           </div>
 
           {/* Expanded Input Styles Content */}
-          {expandedSection === 'inputs' && (
+          {expandedSection === "inputs" && (
             <div className="px-4 pb-4 space-y-2">
               {inputStyles.map((style) => (
                 <button
@@ -414,8 +455,8 @@ export default function StylePanel({
                   }}
                   className={`w-full p-3 rounded-lg cursor-pointer transition-all duration-200 border-2 ${
                     selectedInputStyle === style.id
-                      ? 'border-purple-500 bg-white'
-                      : 'border-transparent bg-white hover:border-slate-300'
+                      ? "border-purple-500 bg-white"
+                      : "border-transparent bg-white hover:border-slate-300"
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -428,7 +469,7 @@ export default function StylePanel({
                         style={{
                           borderRadius: style.borderRadius,
                           border: style.border,
-                          borderBottom: style.borderBottom
+                          borderBottom: style.borderBottom,
                         }}
                       />
                     </div>
