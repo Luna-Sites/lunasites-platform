@@ -134,14 +134,20 @@ export default function SiteSettings() {
 
   // Verify DNS
   const handleVerifyDns = async () => {
-    if (!siteId) return;
+    console.log('handleVerifyDns called, siteId:', siteId);
+    if (!siteId) {
+      console.error('No siteId found!');
+      return;
+    }
 
     setError(null);
     setSuccess(null);
     setActionLoading('verify');
 
     try {
+      console.log('Calling api.verifyCustomDomain...');
       const result = await api.verifyCustomDomain(siteId);
+      console.log('verifyCustomDomain result:', result);
       if (result.verified) {
         setSuccess(result.message);
         await refreshStatus();
@@ -417,15 +423,17 @@ export default function SiteSettings() {
                           </div>
                           <div className="flex justify-between">
                             <span className="text-slate-500">Host:</span>
-                            <span className="text-slate-900 font-semibold">{dnsInstructions.host}</span>
+                            <span className="text-slate-900 font-semibold">
+                              {customDomain.domain.startsWith('www.') ? 'www' : 'www'}
+                            </span>
                           </div>
                           <div className="flex justify-between items-center">
                             <span className="text-slate-500">Value:</span>
                             <div className="flex items-center gap-2">
-                              <span className="text-slate-900 font-semibold">{dnsInstructions.value}</span>
+                              <span className="text-slate-900 font-semibold break-all">{dnsInstructions.value}</span>
                               <button
                                 onClick={() => copyToClipboard(dnsInstructions.value)}
-                                className="text-slate-400 hover:text-slate-600"
+                                className="text-slate-400 hover:text-slate-600 flex-shrink-0"
                                 title="Copy to clipboard"
                               >
                                 <Copy className="w-4 h-4" />
@@ -436,6 +444,20 @@ export default function SiteSettings() {
                         {copied && (
                           <p className="text-xs text-green-600 mt-2">Copied to clipboard!</p>
                         )}
+
+                        {/* Warning for apex domains */}
+                        {!customDomain.domain.startsWith('www.') && (
+                          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <p className="text-sm text-amber-800 font-medium mb-1">
+                              Important pentru domenii root (apex)
+                            </p>
+                            <p className="text-xs text-amber-700">
+                              CNAME records nu pot fi folosite pentru domenii root (@). Folosește <strong>www</strong> ca Host în loc de @.
+                              După configurare, poți seta o redirecționare de la {customDomain.domain} către www.{customDomain.domain} din panoul registrar-ului.
+                            </p>
+                          </div>
+                        )}
+
                         <p className="text-xs text-blue-600 mt-3">
                           Note: DNS propagation can take up to 48 hours.
                         </p>

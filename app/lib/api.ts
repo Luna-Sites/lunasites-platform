@@ -272,9 +272,12 @@ export const api = {
     verified: boolean;
     message: string;
   }> {
-    return apiRequest(`/sites/${siteId}/domains/verify`, {
+    console.log('api.verifyCustomDomain called with siteId:', siteId);
+    const result = await apiRequest<{ verified: boolean; message: string }>(`/sites/${siteId}/domains/verify`, {
       method: 'POST',
     });
+    console.log('api.verifyCustomDomain response:', result);
+    return result;
   },
 
   // Activate custom domain

@@ -550,9 +550,11 @@ router.post(
   '/:siteId/domains/verify',
   authMiddleware,
   async (req: AuthenticatedRequest, res: Response) => {
+    console.log('=== VERIFY DOMAIN ENDPOINT CALLED ===');
     try {
       const { siteId } = req.params;
       const userId = req.user!.uid;
+      console.log(`Verifying domain for site: ${siteId}, user: ${userId}`);
 
       // Verify site ownership
       const site = await sitesService.getSiteBySiteId(siteId);
