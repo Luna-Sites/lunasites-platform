@@ -157,9 +157,11 @@ export async function resumeService(serviceId: string): Promise<void> {
  * Add a custom domain to a Render service
  */
 export async function addCustomDomain(serviceId: string, domain: string): Promise<void> {
-  console.log(`[Render] Adding custom domain ${domain} to service ${serviceId}`);
+  const url = `${RENDER_API_URL}/services/${serviceId}/custom-domains`;
+  console.log(`[Render:addCustomDomain] POST ${url}`);
+  console.log(`[Render:addCustomDomain] Body: { name: "${domain}" }`);
 
-  const response = await fetch(`${RENDER_API_URL}/services/${serviceId}/custom-domains`, {
+  const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${config.render.apiKey}`,
@@ -170,17 +172,28 @@ export async function addCustomDomain(serviceId: string, domain: string): Promis
     }),
   });
 
+  console.log(`[Render:addCustomDomain] Response status: ${response.status}`);
+
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
+    const errorText = await response.text();
+    console.log(`[Render:addCustomDomain] Error response: ${errorText}`);
+
     // Ignore if domain already exists (409 Conflict)
     if (response.status === 409) {
-      console.log(`[Render] Domain ${domain} already exists`);
+      console.log(`[Render:addCustomDomain] Domain ${domain} already exists (409), continuing...`);
       return;
     }
+
+    let error = {};
+    try {
+      error = JSON.parse(errorText);
+    } catch (e) {}
     throw new Error(`Failed to add custom domain: ${response.status} - ${JSON.stringify(error)}`);
   }
 
-  console.log(`[Render] Custom domain ${domain} added successfully`);
+  const responseText = await response.text();
+  console.log(`[Render:addCustomDomain] Success response: ${responseText}`);
+  console.log(`[Render:addCustomDomain] Domain ${domain} added successfully`);
 }
 
 // ============================================
@@ -231,52 +244,107 @@ export async function getCustomDomains(serviceId: string): Promise<RenderCustomD
  * Get a specific custom domain by name
  */
 export async function getCustomDomain(serviceId: string, domainName: string): Promise<RenderCustomDomain | null> {
-  const response = await fetch(
-    `${RENDER_API_URL}/services/${serviceId}/custom-domains/${encodeURIComponent(domainName)}`,
-    {
-      headers: {
-        'Authorization': `Bearer ${config.render.apiKey}`,
-      },
-    }
-  );
+  const url = `${RENDER_API_URL}/services/${serviceId}/custom-domains/${encodeURIComponent(domainName)}`;
+  console.log(`[Render:getCustomDomain] GET ${url}`);
+
+  const response = await fetch(url, {
+    headers: {
+      'Authorization': `Bearer ${config.render.apiKey}`,
+    },
+  });
+
+  console.log(`[Render:getCustomDomain] Response status: ${response.status}`);
 
   if (response.status === 404) {
+    console.log(`[Render:getCustomDomain] Domain not found (404)`);
     return null;
   }
 
   if (!response.ok) {
+    const errorText = await response.text();
+    console.log(`[Render:getCustomDomain] Error: ${response.status} - ${errorText}`);
     throw new Error(`Failed to get custom domain: ${response.status}`);
   }
 
-  return await response.json();
+  const data = await response.json();
+  console.log(`[Render:getCustomDomain] Response:`, JSON.stringify(data, null, 2));
+  return data;
 }
 
 /**
  * Verify DNS configuration for a custom domain
+ * Note: Render's verify endpoint may return empty response, so we fetch the domain status after
  */
 export async function verifyCustomDomain(serviceId: string, domainName: string): Promise<{
   verified: boolean;
   verificationStatus: 'unverified' | 'verified';
 }> {
-  const response = await fetch(
-    `${RENDER_API_URL}/services/${serviceId}/custom-domains/${encodeURIComponent(domainName)}/verify`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${config.render.apiKey}`,
-      },
-    }
-  );
+  const url = `${RENDER_API_URL}/services/${serviceId}/custom-domains/${encodeURIComponent(domainName)}/verify`;
+  console.log(`[Render:verifyCustomDomain] POST ${url}`);
+
+  // First, trigger the verification
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${config.render.apiKey}`,
+    },
+  });
+
+  console.log(`[Render:verifyCustomDomain] Response status: ${response.status} ${response.statusText}`);
+  console.log(`[Render:verifyCustomDomain] Response headers:`, Object.fromEntries(response.headers.entries()));
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(`Failed to verify custom domain: ${response.status} - ${JSON.stringify(error)}`);
+    const errorText = await response.text();
+    console.log(`[Render:verifyCustomDomain] Error response body: "${errorText}"`);
+    let errorJson = {};
+    try {
+      errorJson = JSON.parse(errorText);
+    } catch (e) {}
+    throw new Error(`Failed to verify custom domain: ${response.status} - ${JSON.stringify(errorJson)}`);
   }
 
-  const data = await response.json();
+  // Try to parse response, but it might be empty (204 No Content or empty body)
+  const text = await response.text();
+  console.log(`[Render:verifyCustomDomain] Response body length: ${text.length}`);
+  console.log(`[Render:verifyCustomDomain] Response body: "${text.substring(0, 500)}"`);
+
+  let data: any = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+      console.log(`[Render:verifyCustomDomain] Parsed JSON:`, data);
+    } catch (e) {
+      console.log(`[Render:verifyCustomDomain] Failed to parse JSON: ${e}`);
+    }
+  }
+
+  // If we got a response with verificationStatus, use it
+  if (data && data.verificationStatus) {
+    console.log(`[Render:verifyCustomDomain] Using response verificationStatus: ${data.verificationStatus}`);
+    return {
+      verified: data.verificationStatus === 'verified',
+      verificationStatus: data.verificationStatus,
+    };
+  }
+
+  // Otherwise, fetch the domain to get its current status
+  console.log(`[Render:verifyCustomDomain] Response empty or no verificationStatus, fetching domain status...`);
+  const domain = await getCustomDomain(serviceId, domainName);
+  console.log(`[Render:verifyCustomDomain] getCustomDomain result:`, domain);
+
+  if (domain) {
+    console.log(`[Render:verifyCustomDomain] Domain found, verificationStatus: ${domain.verificationStatus}`);
+    return {
+      verified: domain.verificationStatus === 'verified',
+      verificationStatus: domain.verificationStatus,
+    };
+  }
+
+  // Domain not found after verification (shouldn't happen)
+  console.log(`[Render:verifyCustomDomain] Domain not found! Returning unverified.`);
   return {
-    verified: data.verificationStatus === 'verified',
-    verificationStatus: data.verificationStatus,
+    verified: false,
+    verificationStatus: 'unverified',
   };
 }
 
