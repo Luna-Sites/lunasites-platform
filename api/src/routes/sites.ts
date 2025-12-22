@@ -625,7 +625,20 @@ router.post(
         serviceIdToUse = config.render.workerServiceId;
       }
 
-      console.log(`Step 2 - Verifying DNS via Render API on service ${serviceIdToUse}...`);
+      // First, check if domain exists on Render - if not, add it
+      console.log(`Step 2 - Checking if domain exists on Render service ${serviceIdToUse}...`);
+      const existingDomain = await renderService.getCustomDomain(serviceIdToUse, domainToVerify);
+
+      if (!existingDomain) {
+        console.log(`Domain ${domainToVerify} not found on Render, adding it now...`);
+        await renderService.addCustomDomain(serviceIdToUse, domainToVerify);
+        console.log(`Domain ${domainToVerify} added to Render`);
+      } else {
+        console.log(`Domain ${domainToVerify} already exists on Render`);
+      }
+
+      // Now verify DNS
+      console.log(`Step 2 - Verifying DNS via Render API...`);
       const renderResult = await renderService.verifyCustomDomain(
         serviceIdToUse,
         domainToVerify
