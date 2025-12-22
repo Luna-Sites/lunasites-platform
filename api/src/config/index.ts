@@ -19,6 +19,8 @@ export const config = {
     ownerId: process.env.RENDER_OWNER_ID || '',
     // Multi-tenant worker service ID (for adding custom domains)
     workerServiceId: process.env.RENDER_WORKER_SERVICE_ID || '',
+    // Multi-tenant worker service URL (for CNAME target, e.g., "lunacms-worker.onrender.com")
+    workerServiceUrl: process.env.RENDER_WORKER_SERVICE_URL || '',
   },
 
   // LunaCMS repository for deployments

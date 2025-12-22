@@ -439,9 +439,11 @@ router.post(
 
       // Add domain to Render
       let cnameTarget: string;
+      let serviceIdToUse: string;
+
       if (site.renderServiceId && site.renderServiceId !== 'multi-tenant') {
         // Single-tenant mode: add to site's own Render service
-        await renderService.addCustomDomain(site.renderServiceId, domain);
+        serviceIdToUse = site.renderServiceId;
         const renderUrl = site.renderUrl || `${siteId}.${config.baseDomain}`;
         cnameTarget = renderUrl.replace(/^https?:\/\//, '');
       } else {
@@ -449,9 +451,39 @@ router.post(
         if (!config.render.workerServiceId) {
           return res.status(500).json({ error: 'Worker service not configured. Please set RENDER_WORKER_SERVICE_ID.' });
         }
-        console.log(`[CustomDomain] Adding ${domain} to worker service ${config.render.workerServiceId}`);
-        await renderService.addCustomDomain(config.render.workerServiceId, domain);
-        cnameTarget = `${config.baseDomain}`;
+        if (!config.render.workerServiceUrl) {
+          return res.status(500).json({ error: 'Worker service URL not configured. Please set RENDER_WORKER_SERVICE_URL.' });
+        }
+        serviceIdToUse = config.render.workerServiceId;
+        // CNAME should point to the Render worker service URL (e.g., lunacms-worker.onrender.com)
+        cnameTarget = config.render.workerServiceUrl;
+      }
+
+      console.log(`[CustomDomain] Adding ${domain} to Render service ${serviceIdToUse}`);
+
+      try {
+        // Add the domain to Render
+        await renderService.addCustomDomain(serviceIdToUse, domain);
+        console.log(`[CustomDomain] Successfully added ${domain} to Render`);
+
+        // If it's an apex domain, also add the www subdomain
+        if (!domain.startsWith('www.')) {
+          const wwwDomain = `www.${domain}`;
+          console.log(`[CustomDomain] Also adding www subdomain: ${wwwDomain}`);
+          try {
+            await renderService.addCustomDomain(serviceIdToUse, wwwDomain);
+            console.log(`[CustomDomain] Successfully added ${wwwDomain} to Render`);
+          } catch (wwwError) {
+            // It's okay if www fails (might already exist or other reason)
+            console.log(`[CustomDomain] Note: Failed to add ${wwwDomain} (may already exist):`, wwwError);
+          }
+        }
+      } catch (renderError) {
+        console.error(`[CustomDomain] Failed to add domain to Render:`, renderError);
+        return res.status(500).json({
+          error: 'Failed to add domain to Render service',
+          details: renderError instanceof Error ? renderError.message : 'Unknown error'
+        });
       }
 
       // Save to Firestore
@@ -510,7 +542,8 @@ router.get(
         cnameTarget = renderUrl.replace(/^https?:\/\//, '');
       } else if (config.render.workerServiceId) {
         serviceIdToUse = config.render.workerServiceId;
-        cnameTarget = config.baseDomain;
+        // CNAME should point to the Render worker service URL
+        cnameTarget = config.render.workerServiceUrl || config.baseDomain;
       } else {
         cnameTarget = config.baseDomain;
       }
@@ -620,31 +653,81 @@ router.post(
         serviceIdToUse = site.renderServiceId;
       } else {
         if (!config.render.workerServiceId) {
-          return res.status(500).json({ error: 'Worker service not configured' });
+          console.error('RENDER_WORKER_SERVICE_ID is not configured!');
+          return res.status(500).json({ error: 'Worker service not configured. Please set RENDER_WORKER_SERVICE_ID environment variable.' });
         }
         serviceIdToUse = config.render.workerServiceId;
       }
 
+      console.log(`Using Render service ID: ${serviceIdToUse}`);
+
       // First, check if domain exists on Render - if not, add it
       console.log(`Step 2 - Checking if domain exists on Render service ${serviceIdToUse}...`);
-      const existingDomain = await renderService.getCustomDomain(serviceIdToUse, domainToVerify);
+      let existingDomain;
+      try {
+        existingDomain = await renderService.getCustomDomain(serviceIdToUse, domainToVerify);
+      } catch (err) {
+        console.error(`Error checking domain on Render:`, err);
+        existingDomain = null;
+      }
 
       if (!existingDomain) {
         console.log(`Domain ${domainToVerify} not found on Render, adding it now...`);
-        await renderService.addCustomDomain(serviceIdToUse, domainToVerify);
-        console.log(`Domain ${domainToVerify} added to Render`);
+        try {
+          await renderService.addCustomDomain(serviceIdToUse, domainToVerify);
+          console.log(`Domain ${domainToVerify} successfully added to Render service ${serviceIdToUse}`);
+
+          // If it's an apex domain, also add the www subdomain
+          if (!domainToVerify.startsWith('www.')) {
+            const wwwDomain = `www.${domainToVerify}`;
+            console.log(`Also adding www subdomain: ${wwwDomain}`);
+            try {
+              await renderService.addCustomDomain(serviceIdToUse, wwwDomain);
+              console.log(`Successfully added ${wwwDomain} to Render`);
+            } catch (wwwError) {
+              console.log(`Note: Failed to add ${wwwDomain} (may already exist):`, wwwError);
+            }
+          }
+        } catch (addError) {
+          console.error(`Failed to add domain to Render:`, addError);
+          return res.status(500).json({
+            error: 'Failed to add domain to Render service',
+            details: addError instanceof Error ? addError.message : 'Unknown error'
+          });
+        }
       } else {
-        console.log(`Domain ${domainToVerify} already exists on Render`);
+        console.log(`Domain ${domainToVerify} already exists on Render with status: ${existingDomain.verificationStatus}`);
+
+        // If domain exists but is apex, ensure www is also added
+        if (!domainToVerify.startsWith('www.')) {
+          const wwwDomain = `www.${domainToVerify}`;
+          try {
+            const wwwExists = await renderService.getCustomDomain(serviceIdToUse, wwwDomain);
+            if (!wwwExists) {
+              console.log(`www subdomain ${wwwDomain} not found, adding it...`);
+              await renderService.addCustomDomain(serviceIdToUse, wwwDomain);
+              console.log(`Successfully added ${wwwDomain} to Render`);
+            }
+          } catch (wwwError) {
+            console.log(`Note: Error handling www subdomain:`, wwwError);
+          }
+        }
       }
 
       // Now verify DNS
       console.log(`Step 2 - Verifying DNS via Render API...`);
-      const renderResult = await renderService.verifyCustomDomain(
-        serviceIdToUse,
-        domainToVerify
-      );
-      console.log('Render verification result:', renderResult);
-      step2Passed = renderResult.verified;
+      let renderResult;
+      try {
+        renderResult = await renderService.verifyCustomDomain(
+          serviceIdToUse,
+          domainToVerify
+        );
+        console.log('Render verification result:', renderResult);
+        step2Passed = renderResult.verified;
+      } catch (verifyError) {
+        console.error(`Error verifying DNS:`, verifyError);
+        step2Passed = false;
+      }
 
       // If both steps pass, update status
       if (step1Passed && step2Passed) {
