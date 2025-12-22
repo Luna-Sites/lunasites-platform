@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
-import { ArrowRight, Globe } from 'lucide-react';
-import { getPublicTemplates, type PublicTemplate } from '../../lib/api';
-import WizardProgress from './WizardProgress';
-import TemplateIframePreview from './TemplateIframePreview';
+import { useState, useEffect } from "react";
+import { ArrowRight, Globe } from "lucide-react";
+import { getPublicTemplates, type PublicTemplate } from "../../lib/api";
+import WizardProgress from "./WizardProgress";
+import TemplateIframePreview from "./TemplateIframePreview";
 
 interface WizardStep1Props {
   selectedCategory: string | null;
@@ -13,7 +13,7 @@ interface WizardStep1Props {
 
 export default function WizardStep1({
   onTemplateSelect,
-  totalSteps
+  totalSteps,
 }: WizardStep1Props) {
   const [templates, setTemplates] = useState<PublicTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,7 +27,7 @@ export default function WizardStep1({
       const data = await getPublicTemplates();
       setTemplates(data);
     } catch (error) {
-      console.error('Error loading templates:', error);
+      console.error("Error loading templates:", error);
     } finally {
       setLoading(false);
     }
@@ -36,23 +36,30 @@ export default function WizardStep1({
   return (
     <div className="min-h-screen p-8 lg:p-16">
       <div className="max-w-7xl mx-auto">
-        <WizardProgress currentStep={1} totalSteps={totalSteps} />
+        <WizardProgress
+          currentStep={1}
+          totalSteps={totalSteps}
+          stepTitle="Choose your starting point"
+        />
         <div className="mb-12 text-center">
-          <h1 className="text-4xl mb-3 text-slate-900 font-bold">Choose your starting point</h1>
-          <p className="text-slate-600 mb-8">
+          <p className="text-slate-600 mb-8 mt-8">
             Select a template to customize or start with a blank canvas
           </p>
 
           {/* Blank Canvas Button */}
           <div className="flex justify-center mb-12">
             <button
-              onClick={() => onTemplateSelect('blank')}
+              onClick={() => onTemplateSelect("blank")}
               className="w-full max-w-md p-6 rounded-2xl border-2 border-dashed border-purple-300 hover:border-purple-500 hover:bg-purple-50/50 transition-all group"
             >
               <div className="flex items-center justify-between">
                 <div className="text-left">
-                  <div className="text-slate-900 font-medium mb-1">Start with Blank Canvas</div>
-                  <div className="text-sm text-slate-600">Build your website from scratch</div>
+                  <div className="text-slate-900 font-medium mb-1">
+                    Start with Blank Canvas
+                  </div>
+                  <div className="text-sm text-slate-600">
+                    Build your website from scratch
+                  </div>
                 </div>
                 <ArrowRight className="size-5 text-purple-600 group-hover:translate-x-1 transition-transform" />
               </div>
@@ -74,7 +81,9 @@ export default function WizardStep1({
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 flex items-center justify-center">
               <Globe className="w-8 h-8 text-slate-400" />
             </div>
-            <p className="text-slate-600 font-medium">No templates available yet</p>
+            <p className="text-slate-600 font-medium">
+              No templates available yet
+            </p>
             <p className="text-sm text-slate-400 mt-1">
               Start with a blank canvas or check back later
             </p>
@@ -87,7 +96,9 @@ export default function WizardStep1({
             {templates.map((template) => (
               <button
                 key={template.id}
-                onClick={() => onTemplateSelect(template.id, template.sourceSiteId)}
+                onClick={() =>
+                  onTemplateSelect(template.id, template.sourceSiteId)
+                }
                 className="group relative overflow-hidden rounded-2xl bg-white shadow-lg hover:shadow-2xl transition-all hover:scale-[1.02]"
               >
                 <TemplateIframePreview
@@ -96,8 +107,12 @@ export default function WizardStep1({
                   className="aspect-[16/10]"
                 />
                 <div className="p-6 text-left">
-                  <div className="text-slate-900 font-medium mb-1">{template.name}</div>
-                  <div className="text-sm text-slate-600">{template.description || 'No description'}</div>
+                  <div className="text-slate-900 font-medium mb-1">
+                    {template.name}
+                  </div>
+                  <div className="text-sm text-slate-600">
+                    {template.description || "No description"}
+                  </div>
                 </div>
               </button>
             ))}

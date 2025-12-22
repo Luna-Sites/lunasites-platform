@@ -1,18 +1,32 @@
-import { ASSETS } from '../../data/wizard-data';
+import { ASSETS } from "../../data/wizard-data";
 
 interface WizardProgressProps {
   currentStep: number;
   totalSteps: number;
+  stepTitle?: string;
 }
 
-export default function WizardProgress({ currentStep, totalSteps }: WizardProgressProps) {
+export default function WizardProgress({
+  currentStep,
+  totalSteps,
+  stepTitle,
+}: WizardProgressProps) {
   return (
-    <div className="mb-12">
+    <div className="mb-2">
       <div className="flex items-center justify-between mb-4">
         <a href="/" className="flex items-center gap-2">
           <img src={ASSETS.logo} alt="Luna Sites" className="w-[175px]" />
         </a>
-        <span className="text-sm text-slate-500">Step {currentStep} of {totalSteps}</span>
+        <div className="flex items-center gap-3">
+          {stepTitle && (
+            <span className="text-sm font-semibold text-slate-600">
+              {stepTitle}
+            </span>
+          )}
+          <span className="text-sm text-slate-500">
+            Step {currentStep} of {totalSteps}
+          </span>
+        </div>
       </div>
 
       <div className="relative h-2 bg-slate-200 rounded-full overflow-hidden">

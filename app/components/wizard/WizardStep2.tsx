@@ -1,12 +1,12 @@
-import TemplatePreview from './TemplatePreview';
-import StylePanel from './StylePanel';
-import { ASSETS } from '../../data/wizard-data';
+import TemplatePreview from "./TemplatePreview";
+import StylePanel from "./StylePanel";
+import { ASSETS } from "../../data/wizard-data";
 
 interface WizardStep2Props {
   selectedTemplate: string | null;
   selectedTemplateSiteId: string | null;
   selectedPalette: string | null;
-  selectedFont: string;
+  selectedFont: string | null;
   selectedButtonStyle: string;
   selectedInputStyle: string;
   expandedSection: string | null;
@@ -43,18 +43,12 @@ export default function WizardStep2({
   onExpandSection,
   onCustomColorChange,
   onBaseFontSizeChange,
-  onBaseFontSizeMobileChange
+  onBaseFontSizeMobileChange,
 }: WizardStep2Props) {
   return (
     <>
       {/* Left Panel - Preview */}
       <div className="animate-in fade-in duration-500">
-        <div className="mb-8">
-          <div className="mb-2 text-xs text-slate-500 tracking-wide">STEP 2 OF {totalSteps}</div>
-          <h2 className="text-4xl mb-4 text-slate-900 font-bold">Choose your style</h2>
-          <p className="text-slate-600 text-lg">Pick colors and fonts that match your vision</p>
-        </div>
-
         {/* Template Preview with Selected Colors & Fonts */}
         <div className="rounded-2xl overflow-hidden shadow-2xl border-2 border-slate-200">
           <TemplatePreview
@@ -75,9 +69,11 @@ export default function WizardStep2({
 }
 
 // Separate export for the right panel
-export function WizardStep2RightPanel(props: Omit<WizardStep2Props, 'totalSteps'>) {
+export function WizardStep2RightPanel(
+  props: Omit<WizardStep2Props, "totalSteps">
+) {
   return (
-    <div className="p-8 lg:p-16">
+    <div className="p-8 lg:p-16 lg:pt-0">
       <StylePanel
         selectedPalette={props.selectedPalette}
         selectedFont={props.selectedFont}
