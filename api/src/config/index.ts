@@ -17,6 +17,8 @@ export const config = {
   render: {
     apiKey: process.env.RENDER_API_KEY || '',
     ownerId: process.env.RENDER_OWNER_ID || '',
+    // Multi-tenant worker service ID (for adding custom domains)
+    workerServiceId: process.env.RENDER_WORKER_SERVICE_ID || '',
   },
 
   // LunaCMS repository for deployments

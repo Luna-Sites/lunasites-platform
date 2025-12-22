@@ -437,9 +437,21 @@ router.post(
         return res.status(409).json({ error: 'Domain is already in use by another site' });
       }
 
-      // Add domain to Render (if not multi-tenant or if we have a renderServiceId)
+      // Add domain to Render
+      let cnameTarget: string;
       if (site.renderServiceId && site.renderServiceId !== 'multi-tenant') {
+        // Single-tenant mode: add to site's own Render service
         await renderService.addCustomDomain(site.renderServiceId, domain);
+        const renderUrl = site.renderUrl || `${siteId}.${config.baseDomain}`;
+        cnameTarget = renderUrl.replace(/^https?:\/\//, '');
+      } else {
+        // Multi-tenant mode: add to the shared worker service
+        if (!config.render.workerServiceId) {
+          return res.status(500).json({ error: 'Worker service not configured. Please set RENDER_WORKER_SERVICE_ID.' });
+        }
+        console.log(`[CustomDomain] Adding ${domain} to worker service ${config.render.workerServiceId}`);
+        await renderService.addCustomDomain(config.render.workerServiceId, domain);
+        cnameTarget = `${config.baseDomain}`;
       }
 
       // Save to Firestore
@@ -447,10 +459,6 @@ router.post(
 
       // Save to master_sites (but not activated yet)
       await masterDbService.setMasterSiteCustomDomain(siteId, domain);
-
-      // Get render URL for CNAME target
-      const renderUrl = site.renderUrl || `${siteId}.${config.baseDomain}`;
-      const cnameTarget = renderUrl.replace(/^https?:\/\//, '');
 
       return res.json({
         success: true,
@@ -492,14 +500,29 @@ router.get(
         return res.json({ customDomain: null });
       }
 
-      // Get verification and SSL status from Render if available
+      // Determine which Render service to check
+      let serviceIdToUse: string | null = null;
+      let cnameTarget: string;
+
+      if (site.renderServiceId && site.renderServiceId !== 'multi-tenant') {
+        serviceIdToUse = site.renderServiceId;
+        const renderUrl = site.renderUrl || `${siteId}.${config.baseDomain}`;
+        cnameTarget = renderUrl.replace(/^https?:\/\//, '');
+      } else if (config.render.workerServiceId) {
+        serviceIdToUse = config.render.workerServiceId;
+        cnameTarget = config.baseDomain;
+      } else {
+        cnameTarget = config.baseDomain;
+      }
+
+      // Get verification and SSL status from Render
       let verificationStatus: 'unverified' | 'verified' = 'unverified';
       let certificateStatus: 'pending' | 'issued' | 'error' = 'pending';
 
-      if (site.renderServiceId && site.renderServiceId !== 'multi-tenant') {
+      if (serviceIdToUse) {
         try {
           const renderDomain = await renderService.getCustomDomain(
-            site.renderServiceId,
+            serviceIdToUse,
             site.customDomain.domain
           );
           if (renderDomain) {
@@ -508,7 +531,7 @@ router.get(
 
           if (verificationStatus === 'verified') {
             certificateStatus = await renderService.getDomainCertificateStatus(
-              site.renderServiceId,
+              serviceIdToUse,
               site.customDomain.domain
             );
           }
@@ -516,10 +539,6 @@ router.get(
           console.error('Error fetching Render domain status:', err);
         }
       }
-
-      // Get render URL for CNAME target
-      const renderUrl = site.renderUrl || `${siteId}.${config.baseDomain}`;
-      const cnameTarget = renderUrl.replace(/^https?:\/\//, '');
 
       return res.json({
         customDomain: {
@@ -545,7 +564,7 @@ router.get(
   }
 );
 
-// Verify DNS for custom domain
+// Verify DNS for custom domain (2-step verification)
 router.post(
   '/:siteId/domains/verify',
   authMiddleware,
@@ -569,31 +588,67 @@ router.post(
         return res.status(400).json({ error: 'No custom domain configured' });
       }
 
-      let verified = false;
+      const domainToVerify = site.customDomain.domain;
 
-      if (site.renderServiceId && site.renderServiceId !== 'multi-tenant') {
-        // Verify via Render
-        const result = await renderService.verifyCustomDomain(
-          site.renderServiceId,
-          site.customDomain.domain
-        );
-        verified = result.verified;
-      } else {
-        // For multi-tenant, do DNS lookup
-        // For now, assume verified if we get here (can add DNS check later)
-        verified = true;
+      // ============================================
+      // STEP 1: Check if domain is assigned in master_sites
+      // ============================================
+      const masterSite = await masterDbService.getMasterSiteBySiteId(siteId);
+      const step1Passed = masterSite?.custom_domain === domainToVerify;
+
+      console.log(`Step 1 - Domain assigned in master_sites: ${step1Passed}`);
+      console.log(`  Expected: ${domainToVerify}, Found: ${masterSite?.custom_domain}`);
+
+      if (!step1Passed) {
+        return res.json({
+          verified: false,
+          steps: {
+            domainAssigned: false,
+            dnsConfigured: false,
+          },
+          message: 'Domain is not properly assigned to your site. Please try removing and re-adding the domain.',
+        });
       }
 
-      if (verified) {
+      // ============================================
+      // STEP 2: Verify DNS via Render API
+      // ============================================
+      let step2Passed = false;
+      let serviceIdToUse: string;
+
+      if (site.renderServiceId && site.renderServiceId !== 'multi-tenant') {
+        serviceIdToUse = site.renderServiceId;
+      } else {
+        if (!config.render.workerServiceId) {
+          return res.status(500).json({ error: 'Worker service not configured' });
+        }
+        serviceIdToUse = config.render.workerServiceId;
+      }
+
+      console.log(`Step 2 - Verifying DNS via Render API on service ${serviceIdToUse}...`);
+      const renderResult = await renderService.verifyCustomDomain(
+        serviceIdToUse,
+        domainToVerify
+      );
+      console.log('Render verification result:', renderResult);
+      step2Passed = renderResult.verified;
+
+      // If both steps pass, update status
+      if (step1Passed && step2Passed) {
+        console.log('Both steps passed! Updating status to verified...');
         await sitesService.updateCustomDomainStatus(site.id, 'verified');
         await masterDbService.markCustomDomainVerified(siteId);
       }
 
       return res.json({
-        verified,
-        message: verified
+        verified: step1Passed && step2Passed,
+        steps: {
+          domainAssigned: step1Passed,
+          dnsConfigured: step2Passed,
+        },
+        message: step2Passed
           ? 'DNS verified successfully. SSL certificate is being issued.'
-          : 'DNS not yet configured. Please check your DNS settings.',
+          : 'DNS not yet configured. Please add the CNAME record at your domain registrar.',
       });
     } catch (error) {
       console.error('Verify custom domain error:', error);
@@ -624,10 +679,18 @@ router.post(
         return res.status(400).json({ error: 'No custom domain configured' });
       }
 
-      // Check prerequisites
+      // Determine which Render service to check
+      let serviceIdToUse: string | null = null;
       if (site.renderServiceId && site.renderServiceId !== 'multi-tenant') {
+        serviceIdToUse = site.renderServiceId;
+      } else if (config.render.workerServiceId) {
+        serviceIdToUse = config.render.workerServiceId;
+      }
+
+      // Check prerequisites
+      if (serviceIdToUse) {
         const renderDomain = await renderService.getCustomDomain(
-          site.renderServiceId,
+          serviceIdToUse,
           site.customDomain.domain
         );
 
@@ -639,7 +702,7 @@ router.post(
         }
 
         const certStatus = await renderService.getDomainCertificateStatus(
-          site.renderServiceId,
+          serviceIdToUse,
           site.customDomain.domain
         );
 
@@ -693,9 +756,17 @@ router.delete(
 
       const domainToRemove = site.customDomain.domain;
 
-      // Remove from Render
+      // Determine which Render service to use
+      let serviceIdToUse: string | null = null;
       if (site.renderServiceId && site.renderServiceId !== 'multi-tenant') {
-        await renderService.deleteCustomDomain(site.renderServiceId, domainToRemove);
+        serviceIdToUse = site.renderServiceId;
+      } else if (config.render.workerServiceId) {
+        serviceIdToUse = config.render.workerServiceId;
+      }
+
+      // Remove from Render
+      if (serviceIdToUse) {
+        await renderService.deleteCustomDomain(serviceIdToUse, domainToRemove);
       }
 
       // Remove from master_sites

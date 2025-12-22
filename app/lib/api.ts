@@ -267,13 +267,21 @@ export const api = {
     return apiRequest(`/sites/${siteId}/domains`);
   },
 
-  // Verify DNS configuration
+  // Verify DNS configuration (2-step verification)
   async verifyCustomDomain(siteId: string): Promise<{
     verified: boolean;
+    steps: {
+      domainAssigned: boolean;
+      dnsConfigured: boolean;
+    };
     message: string;
   }> {
     console.log('api.verifyCustomDomain called with siteId:', siteId);
-    const result = await apiRequest<{ verified: boolean; message: string }>(`/sites/${siteId}/domains/verify`, {
+    const result = await apiRequest<{
+      verified: boolean;
+      steps: { domainAssigned: boolean; dnsConfigured: boolean };
+      message: string;
+    }>(`/sites/${siteId}/domains/verify`, {
       method: 'POST',
     });
     console.log('api.verifyCustomDomain response:', result);

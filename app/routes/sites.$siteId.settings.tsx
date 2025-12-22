@@ -27,6 +27,11 @@ interface CustomDomainStatus {
   errorMessage?: string;
 }
 
+interface VerificationSteps {
+  domainAssigned: boolean;
+  dnsConfigured: boolean;
+}
+
 interface DnsInstructions {
   type: string;
   host: string;
@@ -48,6 +53,7 @@ export default function SiteSettings() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [verificationSteps, setVerificationSteps] = useState<VerificationSteps | null>(null);
 
   const handleLogout = async () => {
     try {
@@ -132,7 +138,7 @@ export default function SiteSettings() {
     }
   };
 
-  // Verify DNS
+  // Verify DNS (2-step verification)
   const handleVerifyDns = async () => {
     console.log('handleVerifyDns called, siteId:', siteId);
     if (!siteId) {
@@ -148,11 +154,22 @@ export default function SiteSettings() {
       console.log('Calling api.verifyCustomDomain...');
       const result = await api.verifyCustomDomain(siteId);
       console.log('verifyCustomDomain result:', result);
+
+      // Save verification steps for display
+      setVerificationSteps(result.steps);
+
       if (result.verified) {
         setSuccess(result.message);
         await refreshStatus();
       } else {
-        setError(result.message);
+        // Show which step failed
+        if (!result.steps.domainAssigned) {
+          setError('Step 1 failed: Domain is not properly assigned to your site.');
+        } else if (!result.steps.dnsConfigured) {
+          setError('Step 2 failed: DNS not yet configured. Please add the CNAME record.');
+        } else {
+          setError(result.message);
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to verify DNS');
@@ -464,45 +481,76 @@ export default function SiteSettings() {
                       </div>
                     )}
 
-                    {/* Status Grid */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="p-4 bg-slate-50 rounded-lg">
-                        <div className="flex items-center gap-2 mb-1">
-                          {customDomain.verificationStatus === 'verified' ? (
-                            <CheckCircle className="w-4 h-4 text-green-500" />
-                          ) : (
-                            <Clock className="w-4 h-4 text-amber-500" />
-                          )}
-                          <span className="text-sm font-medium text-slate-700">DNS Verification</span>
-                        </div>
-                        <p className={`text-sm ${customDomain.verificationStatus === 'verified' ? 'text-green-600' : 'text-amber-600'}`}>
-                          {customDomain.verificationStatus === 'verified' ? 'Verified' : 'Pending'}
-                        </p>
-                      </div>
-                      <div className="p-4 bg-slate-50 rounded-lg">
-                        <div className="flex items-center gap-2 mb-1">
-                          {customDomain.certificateStatus === 'issued' ? (
-                            <Shield className="w-4 h-4 text-green-500" />
-                          ) : customDomain.certificateStatus === 'error' ? (
-                            <XCircle className="w-4 h-4 text-red-500" />
-                          ) : (
-                            <Clock className="w-4 h-4 text-amber-500" />
-                          )}
-                          <span className="text-sm font-medium text-slate-700">SSL Certificate</span>
-                        </div>
-                        <p className={`text-sm ${
-                          customDomain.certificateStatus === 'issued'
-                            ? 'text-green-600'
-                            : customDomain.certificateStatus === 'error'
-                            ? 'text-red-600'
-                            : 'text-amber-600'
+                    {/* Verification Steps */}
+                    <div className="space-y-3">
+                      <h3 className="text-sm font-medium text-slate-700">Verification Steps</h3>
+
+                      {/* Step 1: Domain Assigned */}
+                      <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                          verificationSteps?.domainAssigned
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-slate-200 text-slate-500'
                         }`}>
-                          {customDomain.certificateStatus === 'issued'
-                            ? 'Issued'
-                            : customDomain.certificateStatus === 'error'
-                            ? 'Error'
-                            : 'Pending'}
-                        </p>
+                          1
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-slate-700">Domain Assigned</p>
+                          <p className="text-xs text-slate-500">Domain is registered in our system</p>
+                        </div>
+                        {verificationSteps?.domainAssigned ? (
+                          <CheckCircle className="w-5 h-5 text-green-500" />
+                        ) : verificationSteps !== null ? (
+                          <XCircle className="w-5 h-5 text-red-500" />
+                        ) : (
+                          <Clock className="w-5 h-5 text-slate-300" />
+                        )}
+                      </div>
+
+                      {/* Step 2: DNS Configured */}
+                      <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                          verificationSteps?.dnsConfigured || customDomain.verificationStatus === 'verified'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-slate-200 text-slate-500'
+                        }`}>
+                          2
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-slate-700">DNS Configured</p>
+                          <p className="text-xs text-slate-500">Domain is pointing to our services</p>
+                        </div>
+                        {verificationSteps?.dnsConfigured || customDomain.verificationStatus === 'verified' ? (
+                          <CheckCircle className="w-5 h-5 text-green-500" />
+                        ) : verificationSteps !== null ? (
+                          <XCircle className="w-5 h-5 text-red-500" />
+                        ) : (
+                          <Clock className="w-5 h-5 text-slate-300" />
+                        )}
+                      </div>
+
+                      {/* Step 3: SSL Certificate */}
+                      <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                          customDomain.certificateStatus === 'issued'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-slate-200 text-slate-500'
+                        }`}>
+                          3
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-slate-700">SSL Certificate</p>
+                          <p className="text-xs text-slate-500">Secure connection enabled</p>
+                        </div>
+                        {customDomain.certificateStatus === 'issued' ? (
+                          <Shield className="w-5 h-5 text-green-500" />
+                        ) : customDomain.certificateStatus === 'error' ? (
+                          <XCircle className="w-5 h-5 text-red-500" />
+                        ) : customDomain.verificationStatus === 'verified' ? (
+                          <RefreshCw className="w-5 h-5 text-amber-500 animate-spin" />
+                        ) : (
+                          <Clock className="w-5 h-5 text-slate-300" />
+                        )}
                       </div>
                     </div>
 
