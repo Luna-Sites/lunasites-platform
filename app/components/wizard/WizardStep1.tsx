@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { ArrowRight, Globe } from "lucide-react";
 import { getPublicTemplates, type PublicTemplate } from "../../lib/api";
 import WizardProgress from "./WizardProgress";
-import TemplateIframePreview from "./TemplateIframePreview";
 
 interface WizardStep1Props {
   selectedCategory: string | null;
@@ -101,11 +100,19 @@ export default function WizardStep1({
                 }
                 className="group relative overflow-hidden rounded-2xl bg-white shadow-lg hover:shadow-2xl transition-all hover:scale-[1.02]"
               >
-                <TemplateIframePreview
-                  siteId={template.sourceSiteId}
-                  mode="card"
-                  className="aspect-[16/10]"
-                />
+                <div className="aspect-[16/10] overflow-hidden bg-gradient-to-br from-purple-100 to-blue-100">
+                  {template.thumbnailUrl ? (
+                    <img
+                      src={template.thumbnailUrl}
+                      alt={template.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Globe className="w-16 h-16 text-purple-300" />
+                    </div>
+                  )}
+                </div>
                 <div className="p-6 text-left">
                   <div className="text-slate-900 font-medium mb-1">
                     {template.name}
