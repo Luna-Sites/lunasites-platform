@@ -32,6 +32,29 @@ export default function WizardStep1({
     }
   };
 
+  // Generate screenshot URL from site ID if no thumbnail exists
+  const getTemplateImage = (template: PublicTemplate): string | null => {
+    if (template.thumbnailUrl) {
+      return template.thumbnailUrl;
+    }
+
+    // Use screenshot API as fallback
+    if (template.sourceSiteId) {
+      const siteUrl = `https://${template.sourceSiteId}.luna-sites.com`;
+      const apiKey = import.meta.env.VITE_SCREENSHOTONE_API_KEY;
+
+      if (!apiKey) {
+        console.warn('VITE_SCREENSHOTONE_API_KEY not set. Template screenshots will not load.');
+        return null;
+      }
+
+      // Using ScreenshotOne API
+      return `https://api.screenshotone.com/take?access_key=${apiKey}&url=${encodeURIComponent(siteUrl)}&viewport_width=1200&viewport_height=800&device_scale_factor=1&format=jpg&image_quality=80&block_ads=true&block_cookie_banners=true&block_trackers=true&cache=true&cache_ttl=2592000`;
+    }
+
+    return null;
+  };
+
   return (
     <div className="min-h-screen p-8 lg:p-16">
       <div className="max-w-7xl mx-auto">
@@ -101,11 +124,12 @@ export default function WizardStep1({
                 className="group relative overflow-hidden rounded-2xl bg-white shadow-lg hover:shadow-2xl transition-all hover:scale-[1.02]"
               >
                 <div className="aspect-[16/10] overflow-hidden bg-gradient-to-br from-purple-100 to-blue-100">
-                  {template.thumbnailUrl ? (
+                  {getTemplateImage(template) ? (
                     <img
-                      src={template.thumbnailUrl}
+                      src={getTemplateImage(template)!}
                       alt={template.name}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      loading="lazy"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
