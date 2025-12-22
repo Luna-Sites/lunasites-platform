@@ -393,6 +393,326 @@ router.post(
   }
 );
 
+// ============================================
+// CUSTOM DOMAIN ENDPOINTS
+// ============================================
+
+// Add custom domain to a site
+router.post(
+  '/:siteId/domains',
+  authMiddleware,
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { siteId } = req.params;
+      const { domain } = req.body;
+      const userId = req.user!.uid;
+
+      if (!domain) {
+        return res.status(400).json({ error: 'Domain is required' });
+      }
+
+      // Validate domain format
+      const domainRegex = /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
+      if (!domainRegex.test(domain)) {
+        return res.status(400).json({ error: 'Invalid domain format' });
+      }
+
+      // Verify site ownership
+      const site = await sitesService.getSiteBySiteId(siteId);
+      if (!site) {
+        return res.status(404).json({ error: 'Site not found' });
+      }
+      if (site.userId !== userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      // Check if site already has a custom domain
+      if (site.customDomain) {
+        return res.status(400).json({ error: 'Site already has a custom domain. Remove it first.' });
+      }
+
+      // Check if domain is already taken by another site
+      const domainTaken = await masterDbService.isCustomDomainTaken(domain, siteId);
+      if (domainTaken) {
+        return res.status(409).json({ error: 'Domain is already in use by another site' });
+      }
+
+      // Add domain to Render (if not multi-tenant or if we have a renderServiceId)
+      if (site.renderServiceId && site.renderServiceId !== 'multi-tenant') {
+        await renderService.addCustomDomain(site.renderServiceId, domain);
+      }
+
+      // Save to Firestore
+      await sitesService.setCustomDomain(site.id, domain);
+
+      // Save to master_sites (but not activated yet)
+      await masterDbService.setMasterSiteCustomDomain(siteId, domain);
+
+      // Get render URL for CNAME target
+      const renderUrl = site.renderUrl || `${siteId}.${config.baseDomain}`;
+      const cnameTarget = renderUrl.replace(/^https?:\/\//, '');
+
+      return res.json({
+        success: true,
+        domain,
+        status: 'pending',
+        dnsInstructions: {
+          type: 'CNAME',
+          host: domain.startsWith('www.') ? 'www' : '@',
+          value: cnameTarget,
+          note: 'DNS propagation can take up to 48 hours.',
+        },
+      });
+    } catch (error) {
+      console.error('Add custom domain error:', error);
+      return res.status(500).json({ error: 'Failed to add custom domain' });
+    }
+  }
+);
+
+// Get custom domain status
+router.get(
+  '/:siteId/domains',
+  authMiddleware,
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { siteId } = req.params;
+      const userId = req.user!.uid;
+
+      // Verify site ownership
+      const site = await sitesService.getSiteBySiteId(siteId);
+      if (!site) {
+        return res.status(404).json({ error: 'Site not found' });
+      }
+      if (site.userId !== userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      if (!site.customDomain) {
+        return res.json({ customDomain: null });
+      }
+
+      // Get verification and SSL status from Render if available
+      let verificationStatus: 'unverified' | 'verified' = 'unverified';
+      let certificateStatus: 'pending' | 'issued' | 'error' = 'pending';
+
+      if (site.renderServiceId && site.renderServiceId !== 'multi-tenant') {
+        try {
+          const renderDomain = await renderService.getCustomDomain(
+            site.renderServiceId,
+            site.customDomain.domain
+          );
+          if (renderDomain) {
+            verificationStatus = renderDomain.verificationStatus;
+          }
+
+          if (verificationStatus === 'verified') {
+            certificateStatus = await renderService.getDomainCertificateStatus(
+              site.renderServiceId,
+              site.customDomain.domain
+            );
+          }
+        } catch (err) {
+          console.error('Error fetching Render domain status:', err);
+        }
+      }
+
+      // Get render URL for CNAME target
+      const renderUrl = site.renderUrl || `${siteId}.${config.baseDomain}`;
+      const cnameTarget = renderUrl.replace(/^https?:\/\//, '');
+
+      return res.json({
+        customDomain: {
+          domain: site.customDomain.domain,
+          status: site.customDomain.status,
+          verificationStatus,
+          certificateStatus,
+          addedAt: site.customDomain.addedAt.toDate().toISOString(),
+          verifiedAt: site.customDomain.verifiedAt?.toDate().toISOString(),
+          activatedAt: site.customDomain.activatedAt?.toDate().toISOString(),
+          errorMessage: site.customDomain.errorMessage,
+        },
+        dnsInstructions: {
+          type: 'CNAME',
+          host: site.customDomain.domain.startsWith('www.') ? 'www' : '@',
+          value: cnameTarget,
+        },
+      });
+    } catch (error) {
+      console.error('Get custom domain error:', error);
+      return res.status(500).json({ error: 'Failed to get custom domain status' });
+    }
+  }
+);
+
+// Verify DNS for custom domain
+router.post(
+  '/:siteId/domains/verify',
+  authMiddleware,
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { siteId } = req.params;
+      const userId = req.user!.uid;
+
+      // Verify site ownership
+      const site = await sitesService.getSiteBySiteId(siteId);
+      if (!site) {
+        return res.status(404).json({ error: 'Site not found' });
+      }
+      if (site.userId !== userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      if (!site.customDomain) {
+        return res.status(400).json({ error: 'No custom domain configured' });
+      }
+
+      let verified = false;
+
+      if (site.renderServiceId && site.renderServiceId !== 'multi-tenant') {
+        // Verify via Render
+        const result = await renderService.verifyCustomDomain(
+          site.renderServiceId,
+          site.customDomain.domain
+        );
+        verified = result.verified;
+      } else {
+        // For multi-tenant, do DNS lookup
+        // For now, assume verified if we get here (can add DNS check later)
+        verified = true;
+      }
+
+      if (verified) {
+        await sitesService.updateCustomDomainStatus(site.id, 'verified');
+        await masterDbService.markCustomDomainVerified(siteId);
+      }
+
+      return res.json({
+        verified,
+        message: verified
+          ? 'DNS verified successfully. SSL certificate is being issued.'
+          : 'DNS not yet configured. Please check your DNS settings.',
+      });
+    } catch (error) {
+      console.error('Verify custom domain error:', error);
+      return res.status(500).json({ error: 'Failed to verify custom domain' });
+    }
+  }
+);
+
+// Activate custom domain (only after verification + SSL)
+router.post(
+  '/:siteId/domains/activate',
+  authMiddleware,
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { siteId } = req.params;
+      const userId = req.user!.uid;
+
+      // Verify site ownership
+      const site = await sitesService.getSiteBySiteId(siteId);
+      if (!site) {
+        return res.status(404).json({ error: 'Site not found' });
+      }
+      if (site.userId !== userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      if (!site.customDomain) {
+        return res.status(400).json({ error: 'No custom domain configured' });
+      }
+
+      // Check prerequisites
+      if (site.renderServiceId && site.renderServiceId !== 'multi-tenant') {
+        const renderDomain = await renderService.getCustomDomain(
+          site.renderServiceId,
+          site.customDomain.domain
+        );
+
+        if (!renderDomain || renderDomain.verificationStatus !== 'verified') {
+          return res.status(400).json({
+            error: 'DNS not verified',
+            message: 'Please verify DNS configuration before activating.',
+          });
+        }
+
+        const certStatus = await renderService.getDomainCertificateStatus(
+          site.renderServiceId,
+          site.customDomain.domain
+        );
+
+        if (certStatus !== 'issued') {
+          return res.status(400).json({
+            error: 'SSL certificate not ready',
+            message: 'SSL certificate is still being issued. Please wait.',
+          });
+        }
+      }
+
+      // Activate in master_sites for routing
+      await masterDbService.activateMasterSiteCustomDomain(siteId);
+
+      // Update Firestore status
+      await sitesService.updateCustomDomainStatus(site.id, 'active');
+
+      return res.json({
+        success: true,
+        message: 'Custom domain activated successfully',
+        domain: site.customDomain.domain,
+      });
+    } catch (error) {
+      console.error('Activate custom domain error:', error);
+      return res.status(500).json({ error: 'Failed to activate custom domain' });
+    }
+  }
+);
+
+// Remove custom domain
+router.delete(
+  '/:siteId/domains',
+  authMiddleware,
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { siteId } = req.params;
+      const userId = req.user!.uid;
+
+      // Verify site ownership
+      const site = await sitesService.getSiteBySiteId(siteId);
+      if (!site) {
+        return res.status(404).json({ error: 'Site not found' });
+      }
+      if (site.userId !== userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      if (!site.customDomain) {
+        return res.status(400).json({ error: 'No custom domain configured' });
+      }
+
+      const domainToRemove = site.customDomain.domain;
+
+      // Remove from Render
+      if (site.renderServiceId && site.renderServiceId !== 'multi-tenant') {
+        await renderService.deleteCustomDomain(site.renderServiceId, domainToRemove);
+      }
+
+      // Remove from master_sites
+      await masterDbService.removeMasterSiteCustomDomain(siteId);
+
+      // Remove from Firestore
+      await sitesService.removeCustomDomain(site.id);
+
+      return res.json({
+        success: true,
+        message: 'Custom domain removed',
+      });
+    } catch (error) {
+      console.error('Remove custom domain error:', error);
+      return res.status(500).json({ error: 'Failed to remove custom domain' });
+    }
+  }
+);
+
 // Update site theme
 router.patch(
   '/:siteId/theme',

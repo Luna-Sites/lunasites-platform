@@ -183,6 +183,169 @@ export async function addCustomDomain(serviceId: string, domain: string): Promis
   console.log(`[Render] Custom domain ${domain} added successfully`);
 }
 
+// ============================================
+// CUSTOM DOMAIN MANAGEMENT
+// ============================================
+
+export interface RenderCustomDomain {
+  id: string;
+  name: string;
+  domainType: 'apex' | 'subdomain';
+  publicSuffix: string;
+  redirectForName?: string;
+  verificationStatus: 'unverified' | 'verified';
+  createdAt: string;
+  server: {
+    id: string;
+    name: string;
+  };
+}
+
+export interface RenderCertificate {
+  id: string;
+  certificatePath: string;
+  customDomains: string[];
+  expiresAt: string;
+  issuedAt: string;
+}
+
+/**
+ * Get all custom domains for a service
+ */
+export async function getCustomDomains(serviceId: string): Promise<RenderCustomDomain[]> {
+  const response = await fetch(`${RENDER_API_URL}/services/${serviceId}/custom-domains`, {
+    headers: {
+      'Authorization': `Bearer ${config.render.apiKey}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get custom domains: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return (data as { customDomain: RenderCustomDomain }[]).map(item => item.customDomain);
+}
+
+/**
+ * Get a specific custom domain by name
+ */
+export async function getCustomDomain(serviceId: string, domainName: string): Promise<RenderCustomDomain | null> {
+  const response = await fetch(
+    `${RENDER_API_URL}/services/${serviceId}/custom-domains/${encodeURIComponent(domainName)}`,
+    {
+      headers: {
+        'Authorization': `Bearer ${config.render.apiKey}`,
+      },
+    }
+  );
+
+  if (response.status === 404) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Failed to get custom domain: ${response.status}`);
+  }
+
+  return await response.json();
+}
+
+/**
+ * Verify DNS configuration for a custom domain
+ */
+export async function verifyCustomDomain(serviceId: string, domainName: string): Promise<{
+  verified: boolean;
+  verificationStatus: 'unverified' | 'verified';
+}> {
+  const response = await fetch(
+    `${RENDER_API_URL}/services/${serviceId}/custom-domains/${encodeURIComponent(domainName)}/verify`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${config.render.apiKey}`,
+      },
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(`Failed to verify custom domain: ${response.status} - ${JSON.stringify(error)}`);
+  }
+
+  const data = await response.json();
+  return {
+    verified: data.verificationStatus === 'verified',
+    verificationStatus: data.verificationStatus,
+  };
+}
+
+/**
+ * Delete a custom domain from a service
+ */
+export async function deleteCustomDomain(serviceId: string, domainName: string): Promise<void> {
+  console.log(`[Render] Deleting custom domain ${domainName} from service ${serviceId}`);
+
+  const response = await fetch(
+    `${RENDER_API_URL}/services/${serviceId}/custom-domains/${encodeURIComponent(domainName)}`,
+    {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${config.render.apiKey}`,
+      },
+    }
+  );
+
+  if (response.status === 404) {
+    console.log(`[Render] Domain ${domainName} not found, skipping deletion`);
+    return;
+  }
+
+  if (!response.ok) {
+    throw new Error(`Failed to delete custom domain: ${response.status}`);
+  }
+
+  console.log(`[Render] Custom domain ${domainName} deleted successfully`);
+}
+
+/**
+ * Get certificates for a service (to check SSL status)
+ */
+export async function getCertificates(serviceId: string): Promise<RenderCertificate[]> {
+  const response = await fetch(`${RENDER_API_URL}/services/${serviceId}/certificates`, {
+    headers: {
+      'Authorization': `Bearer ${config.render.apiKey}`,
+    },
+  });
+
+  // Certificates endpoint may not exist for all services
+  if (response.status === 404) {
+    return [];
+  }
+
+  if (!response.ok) {
+    throw new Error(`Failed to get certificates: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return (data as { certificate: RenderCertificate }[]).map(item => item.certificate);
+}
+
+/**
+ * Check if a domain has a valid SSL certificate
+ */
+export async function getDomainCertificateStatus(serviceId: string, domainName: string): Promise<'pending' | 'issued' | 'error'> {
+  try {
+    const certificates = await getCertificates(serviceId);
+    const hasCert = certificates.some(cert =>
+      cert.customDomains.includes(domainName)
+    );
+    return hasCert ? 'issued' : 'pending';
+  } catch {
+    return 'pending';
+  }
+}
+
 /**
  * Get service by name
  */

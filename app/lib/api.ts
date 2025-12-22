@@ -223,6 +223,80 @@ export const api = {
       method: 'DELETE',
     });
   },
+
+  // ============================================
+  // CUSTOM DOMAINS
+  // ============================================
+
+  // Add custom domain to site
+  async addCustomDomain(siteId: string, domain: string): Promise<{
+    success: boolean;
+    domain: string;
+    status: string;
+    dnsInstructions: {
+      type: string;
+      host: string;
+      value: string;
+      note?: string;
+    };
+  }> {
+    return apiRequest(`/sites/${siteId}/domains`, {
+      method: 'POST',
+      body: JSON.stringify({ domain }),
+    });
+  },
+
+  // Get custom domain status
+  async getCustomDomainStatus(siteId: string): Promise<{
+    customDomain: {
+      domain: string;
+      status: 'pending' | 'verifying' | 'verified' | 'active' | 'error';
+      verificationStatus: 'unverified' | 'verified';
+      certificateStatus: 'pending' | 'issued' | 'error';
+      addedAt: string;
+      verifiedAt?: string;
+      activatedAt?: string;
+      errorMessage?: string;
+    } | null;
+    dnsInstructions?: {
+      type: string;
+      host: string;
+      value: string;
+    };
+  }> {
+    return apiRequest(`/sites/${siteId}/domains`);
+  },
+
+  // Verify DNS configuration
+  async verifyCustomDomain(siteId: string): Promise<{
+    verified: boolean;
+    message: string;
+  }> {
+    return apiRequest(`/sites/${siteId}/domains/verify`, {
+      method: 'POST',
+    });
+  },
+
+  // Activate custom domain
+  async activateCustomDomain(siteId: string): Promise<{
+    success: boolean;
+    message: string;
+    domain: string;
+  }> {
+    return apiRequest(`/sites/${siteId}/domains/activate`, {
+      method: 'POST',
+    });
+  },
+
+  // Remove custom domain
+  async removeCustomDomain(siteId: string): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    return apiRequest(`/sites/${siteId}/domains`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 // Error handling helper

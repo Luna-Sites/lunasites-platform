@@ -8,6 +8,7 @@ export default [
   route("/signup", "routes/signup.tsx"),
   route("/sites", "routes/sites.tsx"),
   route("/sites/:siteId/edit", "routes/sites.$siteId.edit.tsx"),
+  route("/sites/:siteId/settings", "routes/sites.$siteId.settings.tsx"),
   route("/billing", "routes/billing.tsx"),
   route("/profile", "routes/profile.tsx"),
   route("/templates", "routes/templates.tsx")

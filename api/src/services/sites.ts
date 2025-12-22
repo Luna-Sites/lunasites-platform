@@ -2,6 +2,15 @@ import admin from 'firebase-admin';
 
 const db = admin.firestore();
 
+export interface CustomDomainInfo {
+  domain: string;
+  status: 'pending' | 'verifying' | 'verified' | 'active' | 'error';
+  addedAt: admin.firestore.Timestamp;
+  verifiedAt?: admin.firestore.Timestamp;
+  activatedAt?: admin.firestore.Timestamp;
+  errorMessage?: string;
+}
+
 export interface Site {
   id: string;
   siteId: string;
@@ -13,6 +22,8 @@ export interface Site {
   renderUrl?: string;
   createdAt: admin.firestore.Timestamp;
   updatedAt: admin.firestore.Timestamp;
+  // Custom domain
+  customDomain?: CustomDomainInfo;
 }
 
 const sitesCollection = db.collection('sites');
@@ -100,4 +111,61 @@ export async function deleteSite(id: string): Promise<void> {
 export async function checkSiteAvailability(siteId: string): Promise<boolean> {
   const site = await getSiteBySiteId(siteId);
   return site === null;
+}
+
+// ============================================
+// CUSTOM DOMAIN MANAGEMENT
+// ============================================
+
+/**
+ * Set custom domain for a site (initial add)
+ */
+export async function setCustomDomain(id: string, domain: string): Promise<void> {
+  const customDomain: CustomDomainInfo = {
+    domain,
+    status: 'pending',
+    addedAt: admin.firestore.Timestamp.now(),
+  };
+
+  await updateSite(id, { customDomain });
+}
+
+/**
+ * Update custom domain status
+ */
+export async function updateCustomDomainStatus(
+  id: string,
+  status: CustomDomainInfo['status'],
+  errorMessage?: string
+): Promise<void> {
+  const site = await getSiteById(id);
+  if (!site || !site.customDomain) return;
+
+  const updates: Partial<CustomDomainInfo> = { status };
+
+  if (status === 'verified') {
+    updates.verifiedAt = admin.firestore.Timestamp.now();
+  } else if (status === 'active') {
+    updates.activatedAt = admin.firestore.Timestamp.now();
+  } else if (status === 'error' && errorMessage) {
+    updates.errorMessage = errorMessage;
+  }
+
+  await sitesCollection.doc(id).update({
+    'customDomain.status': status,
+    ...(updates.verifiedAt && { 'customDomain.verifiedAt': updates.verifiedAt }),
+    ...(updates.activatedAt && { 'customDomain.activatedAt': updates.activatedAt }),
+    ...(updates.errorMessage && { 'customDomain.errorMessage': updates.errorMessage }),
+    updatedAt: admin.firestore.Timestamp.now(),
+  });
+}
+
+/**
+ * Remove custom domain from a site
+ */
+export async function removeCustomDomain(id: string): Promise<void> {
+  await sitesCollection.doc(id).update({
+    customDomain: admin.firestore.FieldValue.delete(),
+    updatedAt: admin.firestore.Timestamp.now(),
+  });
 }
