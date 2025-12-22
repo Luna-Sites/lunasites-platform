@@ -43,10 +43,24 @@ async function cloudflareRequest<T>(
   const url = `${CLOUDFLARE_API_URL}${endpoint}`;
   console.log(`[Cloudflare] ${options.method || 'GET'} ${url}`);
 
+  // Support both API Token (Bearer) and Global API Key
+  const authHeaders: Record<string, string> = {};
+
+  if (config.cloudflare.apiEmail && config.cloudflare.apiKey) {
+    // Global API Key authentication
+    authHeaders['X-Auth-Email'] = config.cloudflare.apiEmail;
+    authHeaders['X-Auth-Key'] = config.cloudflare.apiKey;
+    console.log(`[Cloudflare] Using Global API Key auth for ${config.cloudflare.apiEmail}`);
+  } else if (config.cloudflare.apiToken) {
+    // API Token (Bearer) authentication
+    authHeaders['Authorization'] = `Bearer ${config.cloudflare.apiToken}`;
+    console.log(`[Cloudflare] Using Bearer token auth`);
+  }
+
   const response = await fetch(url, {
     ...options,
     headers: {
-      'Authorization': `Bearer ${config.cloudflare.apiToken}`,
+      ...authHeaders,
       'Content-Type': 'application/json',
       ...options.headers,
     },
