@@ -17,7 +17,7 @@ import {
   LogOut,
   HelpCircle,
 } from "lucide-react";
-const Logo = "/logo/logo_lunasites_6.png";
+const Logo = "/logo/logo_lunasites_gradient.png";
 import { showcaseImages, templateImages, demoImage } from "../lib/assets";
 import { useAuth } from "../contexts/AuthContext";
 import { auth } from "../lib/firebase";

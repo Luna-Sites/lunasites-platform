@@ -7,7 +7,7 @@ import { auth, googleProvider } from "../lib/firebase";
 import { signInWithPopup, createUserWithEmailAndPassword } from "firebase/auth";
 import { Loader2, Mail, Eye, EyeOff } from "lucide-react";
 import WizardBackground from "../components/wizard/WizardBackground";
-const Logo = "/logo/logo_lunasites_6.png";
+const Logo = "/logo/logo_lunasites_gradient.png";
 
 export function meta({}: Route.MetaArgs) {
   return [

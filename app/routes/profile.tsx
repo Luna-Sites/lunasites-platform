@@ -5,7 +5,7 @@ import { Settings, LogOut, HelpCircle, Layout } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
 
-const Logo = '/logo/logo_lunasites_6.png';
+const Logo = '/logo/logo_lunasites_gradient.png';
 
 export function meta({}: Route.MetaArgs) {
   return [

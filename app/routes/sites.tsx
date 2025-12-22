@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-const Logo = '/logo/logo_lunasites_6.png';
+const Logo = '/logo/logo_lunasites_gradient.png';
 import { auth } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
 import { api } from '../lib/api';
