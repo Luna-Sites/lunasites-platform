@@ -11,3 +11,6 @@
 .env.local
 .env.*.local
 api/.env
+
+# Generated screenshots
+public/screenshots/

@@ -59,7 +59,7 @@ export default function Sites() {
             siteId: site.siteId,
             title: site.name || 'Untitled Website',
             url: site.domain || `${site.siteId}.lunaweb.app`,
-            thumbnail: `/wizard-assets/cadb01d5f39257b9bed043b110f35314dd1c3305.png`, // Placeholder
+            thumbnail: site.screenshotUrl || null,
             createdDate: new Date(site.createdAt).toLocaleDateString('en-US', {
               month: 'short',
               day: 'numeric',
@@ -270,12 +270,25 @@ export default function Sites() {
                               Get started with Luna Sites
                             </p>
                           </div>
-                        ) : (
+                        ) : site.thumbnail ? (
                           <img
                             src={site.thumbnail}
                             alt={site.title}
                             className="w-full h-full object-cover"
+                            onError={(e) => {
+                              // Hide broken image, show fallback
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
                           />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-100 to-blue-100">
+                            <div className="text-center">
+                              <div className="w-12 h-12 mx-auto mb-2 rounded-full bg-purple-200 flex items-center justify-center">
+                                <ExternalLink className="w-6 h-6 text-purple-600" />
+                              </div>
+                              <p className="text-sm text-slate-500">Preview loading...</p>
+                            </div>
+                          </div>
                         )}
                       </div>
                     </div>

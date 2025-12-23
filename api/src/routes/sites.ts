@@ -8,6 +8,7 @@ import * as databaseService from '../services/database.js';
 import * as masterDbService from '../services/masterDb.js';
 import * as siteBootstrap from '../services/siteBootstrap.js';
 import { config } from '../config/index.js';
+import { generateScreenshotUrl } from '../utils/screenshot.js';
 
 const router = Router();
 
@@ -46,17 +47,27 @@ router.get(
       const sites = await sitesService.getSitesByUserId(userId);
 
       // Transform for frontend
-      const transformed = sites.map((site) => ({
-        id: site.id,
-        siteId: site.siteId,
-        userId: site.userId,
-        name: site.name,
-        domain: site.domain,
-        status: site.status,
-        renderUrl: site.renderUrl,
-        createdAt: site.createdAt.toDate().toISOString(),
-        updatedAt: site.updatedAt.toDate().toISOString(),
-      }));
+      const transformed = sites.map((site) => {
+        let screenshotUrl: string | undefined;
+        try {
+          screenshotUrl = generateScreenshotUrl(site.siteId);
+        } catch {
+          // Ignore if screenshot URL generation fails
+        }
+
+        return {
+          id: site.id,
+          siteId: site.siteId,
+          userId: site.userId,
+          name: site.name,
+          domain: site.domain,
+          status: site.status,
+          renderUrl: site.renderUrl,
+          screenshotUrl,
+          createdAt: site.createdAt.toDate().toISOString(),
+          updatedAt: site.updatedAt.toDate().toISOString(),
+        };
+      });
 
       return res.json(transformed);
     } catch (error) {
