@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { ArrowRight, Globe } from "lucide-react";
 import { getPublicTemplates, type PublicTemplate } from "../../lib/api";
 import WizardProgress from "./WizardProgress";
+import TemplateCard from "./TemplateCard";
 
 interface WizardStep1Props {
   selectedCategory: string | null;
@@ -30,11 +31,6 @@ export default function WizardStep1({
     } finally {
       setLoading(false);
     }
-  };
-
-  // Get template image from thumbnailUrl (saved locally during template creation)
-  const getTemplateImage = (template: PublicTemplate): string | null => {
-    return template.thumbnailUrl || null;
   };
 
   return (
@@ -98,36 +94,11 @@ export default function WizardStep1({
         {!loading && templates.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {templates.map((template) => (
-              <button
+              <TemplateCard
                 key={template.id}
-                onClick={() =>
-                  onTemplateSelect(template.id, template.sourceSiteId)
-                }
-                className="group relative overflow-hidden rounded-2xl bg-white shadow-lg hover:shadow-2xl transition-all hover:scale-[1.02]"
-              >
-                <div className="aspect-[16/10] overflow-hidden bg-gradient-to-br from-purple-100 to-blue-100">
-                  {getTemplateImage(template) ? (
-                    <img
-                      src={getTemplateImage(template)!}
-                      alt={template.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <Globe className="w-16 h-16 text-purple-300" />
-                    </div>
-                  )}
-                </div>
-                <div className="p-6 text-left">
-                  <div className="text-slate-900 font-medium mb-1">
-                    {template.name}
-                  </div>
-                  <div className="text-sm text-slate-600">
-                    {template.description || "No description"}
-                  </div>
-                </div>
-              </button>
+                template={template}
+                onSelect={onTemplateSelect}
+              />
             ))}
           </div>
         )}
