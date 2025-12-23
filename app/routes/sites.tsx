@@ -9,6 +9,7 @@ import {
   Settings,
   LogOut,
   HelpCircle,
+  Trash2,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -32,6 +33,8 @@ export default function Sites() {
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [websites, setWebsites] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ siteId: string; title: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   // Redirect to login if not authenticated
   useEffect(() => {
@@ -96,6 +99,22 @@ export default function Sites() {
 
   const handleEditSite = (siteId: string) => {
     navigate(`/sites/${siteId}/edit`);
+  };
+
+  const handleDeleteSite = async () => {
+    if (!deleteConfirm) return;
+
+    setDeleting(true);
+    try {
+      await api.deleteSite(deleteConfirm.siteId);
+      setDeleteConfirm(null);
+      loadSites(); // Reload the list
+    } catch (error) {
+      console.error('Error deleting site:', error);
+      alert('Failed to delete site. Please try again.');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   // Show loading while redirecting
@@ -326,6 +345,16 @@ export default function Sites() {
                                     <Settings className="w-4 h-4" />
                                     Settings
                                   </button>
+                                  <button
+                                    onClick={() => {
+                                      setOpenMenuId(null);
+                                      setDeleteConfirm({ siteId: site.siteId, title: site.title });
+                                    }}
+                                    className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                    Delete
+                                  </button>
                                 </div>
                               )}
                             </div>
@@ -437,6 +466,35 @@ export default function Sites() {
         className="hidden lg:block h-screen bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: `url(${ASSETS.nebulaSitesImg})` }}
       />
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900 mb-2">Delete Website</h3>
+            <p className="text-slate-600 mb-6">
+              Are you sure you want to delete <strong>"{deleteConfirm.title}"</strong>?
+              This action cannot be undone and all website data will be permanently removed.
+            </p>
+            <div className="flex gap-3 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setDeleteConfirm(null)}
+                disabled={deleting}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleDeleteSite}
+                disabled={deleting}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                {deleting ? 'Deleting...' : 'Delete Website'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
