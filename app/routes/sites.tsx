@@ -278,23 +278,15 @@ export default function Sites() {
                               Get started with Luna Sites
                             </p>
                           </div>
-                        ) : site.thumbnail ? (
-                          <img
-                            src={site.thumbnail}
-                            alt={site.title}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = 'none';
-                            }}
-                          />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-100 to-blue-100">
-                            <div className="text-center">
-                              <div className="w-12 h-12 mx-auto mb-2 rounded-full bg-purple-200 flex items-center justify-center">
-                                <ExternalLink className="w-6 h-6 text-purple-600" />
-                              </div>
-                              <p className="text-sm text-slate-500">Preview loading...</p>
-                            </div>
+                          <div className="w-full h-full overflow-hidden">
+                            <iframe
+                              src={`https://${site.url}`}
+                              title={site.title}
+                              className="w-[200%] h-[200%] origin-top-left pointer-events-none"
+                              style={{ transform: 'scale(0.5)' }}
+                              loading="lazy"
+                            />
                           </div>
                         )}
                       </div>
