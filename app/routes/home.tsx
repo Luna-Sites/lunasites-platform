@@ -16,6 +16,7 @@ import {
   Settings,
   LogOut,
   HelpCircle,
+  Layers,
 } from "lucide-react";
 const Logo = "/logo/logo_lunasites_gradient.png";
 import { showcaseImages, templateImages, demoImage } from "../lib/assets";
@@ -270,6 +271,13 @@ export default function Home() {
                   >
                     <Layout className="w-4 h-4" />
                     My Sites
+                  </a>
+                  <a
+                    href="/templates"
+                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                  >
+                    <Layers className="w-4 h-4" />
+                    Templates
                   </a>
                   <a
                     href="/profile"

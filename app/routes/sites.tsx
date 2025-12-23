@@ -10,6 +10,7 @@ import {
   LogOut,
   HelpCircle,
   Trash2,
+  Layers,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -186,8 +187,15 @@ export default function Sites() {
                 )}
                 <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-lg shadow-lg border border-slate-200 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all">
                   <button
-                    onClick={() => (window.location.href = '/profile')}
+                    onClick={() => (window.location.href = '/templates')}
                     className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 rounded-t-lg"
+                  >
+                    <Layers className="w-4 h-4" />
+                    Templates
+                  </button>
+                  <button
+                    onClick={() => (window.location.href = '/profile')}
+                    className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
                   >
                     <Settings className="w-4 h-4" />
                     Account Settings
@@ -276,7 +284,6 @@ export default function Sites() {
                             alt={site.title}
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                              // Hide broken image, show fallback
                               (e.target as HTMLImageElement).style.display = 'none';
                             }}
                           />
