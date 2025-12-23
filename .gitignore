@@ -5,3 +5,9 @@
 /.react-router/
 /build/
 /lunacms/
+
+# Environment files (contain secrets)
+.env
+.env.local
+.env.*.local
+api/.env

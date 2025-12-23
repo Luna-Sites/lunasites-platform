@@ -45,4 +45,9 @@ export const config = {
 
   // Base domain for sites
   baseDomain: process.env.BASE_DOMAIN || 'luna-sites.com',
+
+  // ScreenshotOne API for template thumbnails
+  screenshotone: {
+    accessKey: process.env.SCREENSHOTONE_ACCESS_KEY || '',
+  },
 };

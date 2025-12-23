@@ -32,27 +32,9 @@ export default function WizardStep1({
     }
   };
 
-  // Generate screenshot URL from site ID if no thumbnail exists
+  // Get template image from thumbnailUrl (saved locally during template creation)
   const getTemplateImage = (template: PublicTemplate): string | null => {
-    if (template.thumbnailUrl) {
-      return template.thumbnailUrl;
-    }
-
-    // Use screenshot API as fallback
-    if (template.sourceSiteId) {
-      const siteUrl = `https://${template.sourceSiteId}.luna-sites.com`;
-      const apiKey = import.meta.env.VITE_SCREENSHOTONE_API_KEY;
-
-      if (!apiKey) {
-        console.warn('VITE_SCREENSHOTONE_API_KEY not set. Template screenshots will not load.');
-        return null;
-      }
-
-      // Using ScreenshotOne API
-      return `https://api.screenshotone.com/take?access_key=${apiKey}&url=${encodeURIComponent(siteUrl)}&viewport_width=1200&viewport_height=800&device_scale_factor=1&format=jpg&image_quality=80&block_ads=true&block_cookie_banners=true&block_trackers=true&cache=true&cache_ttl=2592000`;
-    }
-
-    return null;
+    return template.thumbnailUrl || null;
   };
 
   return (

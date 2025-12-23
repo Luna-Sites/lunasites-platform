@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import { api, Template } from '../lib/api';
+import { api, type Template } from '../lib/api';
 
 export function meta({}: Route.MetaArgs) {
   return [
