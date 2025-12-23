@@ -16,6 +16,7 @@ export function generateScreenshotUrl(siteId: string): string {
     url: siteUrl,
     viewport_width: '1200',
     viewport_height: '800',
+    full_page: 'true', // Capture full page height, not just viewport
     device_scale_factor: '1',
     format: 'jpg',
     image_quality: '80',
