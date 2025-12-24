@@ -1,0 +1,35 @@
+{
+    # Fly handles external TLS, Caddy handles internal
+    auto_https off
+
+    # Enable on-demand TLS for custom domains
+    on_demand_tls {
+        ask http://localhost:8081/check
+    }
+}
+
+# Health check endpoint for on-demand TLS verification
+:8081 {
+    respond /check 200
+}
+
+# Main HTTPS handler (Fly terminates external TLS, forwards to 8080)
+:8080 {
+    # Proxy all requests to Render worker
+    reverse_proxy https://lunacms-worker.onrender.com {
+        # Set Host header so Render accepts the request
+        header_up Host lunacms-worker.onrender.com
+
+        # Pass original host to worker for routing
+        header_up X-Original-Host {host}
+        header_up X-Forwarded-Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+
+        # TLS to upstream
+        transport http {
+            tls
+            tls_insecure_skip_verify
+        }
+    }
+}

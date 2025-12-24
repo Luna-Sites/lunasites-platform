@@ -496,6 +496,7 @@ router.post(
 
       // Get CNAME target for DNS instructions
       const cnameTarget = flyService.getCnameTarget();
+      const flyIpv4 = '66.241.125.120'; // Fly.io IPv4 address for apex domains
       console.log(`[CustomDomain] Returning success response for ${domain}`);
 
       return res.json({
@@ -504,10 +505,23 @@ router.post(
         status: 'pending',
         sslStatus: flyCertificate.clientStatus,
         dnsInstructions: {
-          type: 'CNAME',
-          host: domain.startsWith('www.') ? 'www' : 'www',
-          value: cnameTarget,
-          note: 'Adaugă un CNAME record care pointează către ' + cnameTarget + '. Propagarea DNS poate dura până la 48 ore.',
+          records: [
+            {
+              type: 'A',
+              host: '@',
+              value: flyIpv4,
+              description: 'For the root domain (without www)',
+            },
+            {
+              type: 'CNAME',
+              host: 'www',
+              value: cnameTarget,
+              description: 'For the www subdomain',
+            },
+          ],
+          cnameTarget,
+          flyIpv4,
+          note: `Configure both records in DNS: A record (@ → ${flyIpv4}) for the root domain and CNAME (www → ${cnameTarget}) for www. DNS propagation may take up to 48 hours.`,
         },
       });
     } catch (error) {
@@ -559,6 +573,8 @@ router.get(
         console.error('Error fetching Fly certificate status:', err);
       }
 
+      const flyIpv4 = '66.241.125.120'; // Fly.io IPv4 address for apex domains
+
       return res.json({
         customDomain: {
           domain: site.customDomain.domain,
@@ -572,9 +588,23 @@ router.get(
           errorMessage: site.customDomain.errorMessage,
         },
         dnsInstructions: {
-          type: 'CNAME',
-          host: 'www',
-          value: cnameTarget,
+          records: [
+            {
+              type: 'A',
+              host: '@',
+              value: flyIpv4,
+              description: 'For the root domain (without www)',
+            },
+            {
+              type: 'CNAME',
+              host: 'www',
+              value: cnameTarget,
+              description: 'For the www subdomain',
+            },
+          ],
+          cnameTarget,
+          flyIpv4,
+          note: `Configure both records in DNS: A record (@ → ${flyIpv4}) for the root domain and CNAME (www → ${cnameTarget}) for www.`,
         },
       });
     } catch (error) {
