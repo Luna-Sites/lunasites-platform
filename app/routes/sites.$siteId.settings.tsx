@@ -438,52 +438,49 @@ export default function SiteSettings() {
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                         <h3 className="font-medium text-blue-900 mb-3">DNS Configuration Required</h3>
                         <p className="text-sm text-blue-700 mb-4">
-                          Add the following DNS record at your domain registrar:
+                          Add the following DNS records at your domain registrar:
                         </p>
-                        <div className="bg-white rounded-lg p-4 font-mono text-sm space-y-2">
-                          <div className="flex justify-between">
-                            <span className="text-slate-500">Type:</span>
-                            <span className="text-slate-900 font-semibold">{dnsInstructions.type}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-slate-500">Host:</span>
-                            <span className="text-slate-900 font-semibold">
-                              {customDomain.domain.startsWith('www.') ? 'www' : 'www'}
-                            </span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-slate-500">Value:</span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-slate-900 font-semibold break-all">{dnsInstructions.value}</span>
-                              <button
-                                onClick={() => copyToClipboard(dnsInstructions.value)}
-                                className="text-slate-400 hover:text-slate-600 flex-shrink-0"
-                                title="Copy to clipboard"
-                              >
-                                <Copy className="w-4 h-4" />
-                              </button>
+
+                        {/* Display all DNS records */}
+                        <div className="space-y-3">
+                          {dnsInstructions.records?.map((record, index) => (
+                            <div key={index} className="bg-white rounded-lg p-4 font-mono text-sm">
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="text-xs text-slate-500 uppercase">{record.description}</span>
+                              </div>
+                              <div className="space-y-2">
+                                <div className="flex justify-between">
+                                  <span className="text-slate-500">Type:</span>
+                                  <span className="text-slate-900 font-semibold">{record.type}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-slate-500">Host:</span>
+                                  <span className="text-slate-900 font-semibold">{record.host}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                  <span className="text-slate-500">Value:</span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-slate-900 font-semibold break-all">{record.value}</span>
+                                    <button
+                                      onClick={() => copyToClipboard(record.value)}
+                                      className="text-slate-400 hover:text-slate-600 flex-shrink-0"
+                                      title="Copy to clipboard"
+                                    >
+                                      <Copy className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                          </div>
+                          ))}
                         </div>
+
                         {copied && (
                           <p className="text-xs text-green-600 mt-2">Copied to clipboard!</p>
                         )}
 
-                        {/* Warning for apex domains */}
-                        {!customDomain.domain.startsWith('www.') && (
-                          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                            <p className="text-sm text-amber-800 font-medium mb-1">
-                              Important pentru domenii root (apex)
-                            </p>
-                            <p className="text-xs text-amber-700">
-                              CNAME records nu pot fi folosite pentru domenii root (@). Folosește <strong>www</strong> ca Host în loc de @.
-                              După configurare, poți seta o redirecționare de la {customDomain.domain} către www.{customDomain.domain} din panoul registrar-ului.
-                            </p>
-                          </div>
-                        )}
-
                         <p className="text-xs text-blue-600 mt-3">
-                          Note: DNS propagation can take up to 48 hours.
+                          {dnsInstructions.note || 'Note: DNS propagation can take up to 48 hours.'}
                         </p>
                       </div>
                     )}
