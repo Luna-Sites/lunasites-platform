@@ -233,10 +233,17 @@ export const api = {
     success: boolean;
     domain: string;
     status: string;
+    sslStatus: string;
     dnsInstructions: {
-      type: string;
-      host: string;
-      value: string;
+      records: Array<{
+        type: string;
+        host: string;
+        value: string;
+        description?: string;
+      }>;
+      cnameTarget: string;
+      flyIpv4: string;
+      flyIpv6?: string;
       note?: string;
     };
   }> {
@@ -253,15 +260,23 @@ export const api = {
       status: 'pending' | 'verifying' | 'verified' | 'active' | 'error';
       verificationStatus: 'unverified' | 'verified';
       certificateStatus: 'pending' | 'issued' | 'error';
+      sslStatus?: string;
       addedAt: string;
       verifiedAt?: string;
       activatedAt?: string;
       errorMessage?: string;
     } | null;
     dnsInstructions?: {
-      type: string;
-      host: string;
-      value: string;
+      records: Array<{
+        type: string;
+        host: string;
+        value: string;
+        description?: string;
+      }>;
+      cnameTarget: string;
+      flyIpv4: string;
+      flyIpv6?: string;
+      note?: string;
     };
   }> {
     return apiRequest(`/sites/${siteId}/domains`);

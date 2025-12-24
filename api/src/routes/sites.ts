@@ -497,6 +497,7 @@ router.post(
       // Get CNAME target for DNS instructions
       const cnameTarget = flyService.getCnameTarget();
       const flyIpv4 = '66.241.125.120'; // Fly.io IPv4 address for apex domains
+      const flyIpv6 = '2a09:8280:1::bd:b552:0'; // Fly.io IPv6 address for apex domains
       console.log(`[CustomDomain] Returning success response for ${domain}`);
 
       return res.json({
@@ -510,7 +511,13 @@ router.post(
               type: 'A',
               host: '@',
               value: flyIpv4,
-              description: 'For the root domain (without www)',
+              description: 'For the root domain (IPv4)',
+            },
+            {
+              type: 'AAAA',
+              host: '@',
+              value: flyIpv6,
+              description: 'For the root domain (IPv6)',
             },
             {
               type: 'CNAME',
@@ -521,7 +528,8 @@ router.post(
           ],
           cnameTarget,
           flyIpv4,
-          note: `Configure both records in DNS: A record (@ → ${flyIpv4}) for the root domain and CNAME (www → ${cnameTarget}) for www. DNS propagation may take up to 48 hours.`,
+          flyIpv6,
+          note: `Configure DNS records: A record (@ → ${flyIpv4}), AAAA record (@ → ${flyIpv6}), and CNAME (www → ${cnameTarget}). DNS propagation may take up to 48 hours.`,
         },
       });
     } catch (error) {
@@ -574,6 +582,7 @@ router.get(
       }
 
       const flyIpv4 = '66.241.125.120'; // Fly.io IPv4 address for apex domains
+      const flyIpv6 = '2a09:8280:1::bd:b552:0'; // Fly.io IPv6 address for apex domains
 
       return res.json({
         customDomain: {
@@ -593,7 +602,13 @@ router.get(
               type: 'A',
               host: '@',
               value: flyIpv4,
-              description: 'For the root domain (without www)',
+              description: 'For the root domain (IPv4)',
+            },
+            {
+              type: 'AAAA',
+              host: '@',
+              value: flyIpv6,
+              description: 'For the root domain (IPv6)',
             },
             {
               type: 'CNAME',
@@ -604,7 +619,8 @@ router.get(
           ],
           cnameTarget,
           flyIpv4,
-          note: `Configure both records in DNS: A record (@ → ${flyIpv4}) for the root domain and CNAME (www → ${cnameTarget}) for www.`,
+          flyIpv6,
+          note: `Configure DNS records: A record (@ → ${flyIpv4}), AAAA record (@ → ${flyIpv6}), and CNAME (www → ${cnameTarget}).`,
         },
       });
     } catch (error) {
