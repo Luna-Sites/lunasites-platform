@@ -23,13 +23,18 @@ export const config = {
     workerServiceUrl: process.env.RENDER_WORKER_SERVICE_URL || '',
   },
 
-  // Cloudflare for SaaS (Custom Hostnames) - for custom domain SSL
+  // Fly.io for custom domain SSL
+  fly: {
+    apiToken: process.env.FLY_API_TOKEN || '',
+    appName: process.env.FLY_APP_NAME || 'luna-edge-proxy',
+    appHostname: process.env.FLY_APP_HOSTNAME || 'luna-edge-proxy.fly.dev',
+  },
+
+  // Cloudflare for SaaS (Custom Hostnames) - DEPRECATED, use Fly instead
   cloudflare: {
     apiToken: process.env.CLOUDFLARE_API_TOKEN || '',
     zoneId: process.env.CLOUDFLARE_ZONE_ID || '',
-    // Origin server for custom hostnames (e.g., lunacms-worker.onrender.com)
     originServer: process.env.CLOUDFLARE_ORIGIN_SERVER || '',
-    // CNAME target for users (e.g., custom.luna-sites.com)
     cnameTarget: process.env.CLOUDFLARE_CNAME_TARGET || '',
   },
 

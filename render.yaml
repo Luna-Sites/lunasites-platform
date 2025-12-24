@@ -40,11 +40,10 @@ services:
         value: main
       - key: RENDER_WORKER_SERVICE_ID
         sync: false
-      - key: CLOUDFLARE_API_TOKEN
+      # Fly.io for custom domain SSL
+      - key: FLY_API_TOKEN
         sync: false
-      - key: CLOUDFLARE_ZONE_ID
-        sync: false
-      - key: CLOUDFLARE_ORIGIN_SERVER
-        sync: false
-      - key: CLOUDFLARE_CNAME_TARGET
-        sync: false
+      - key: FLY_APP_NAME
+        value: luna-edge-proxy
+      - key: FLY_APP_HOSTNAME
+        value: luna-edge-proxy.fly.dev

@@ -3,7 +3,7 @@ import pg from 'pg';
 import { AuthenticatedRequest, authMiddleware } from '../middleware/auth.js';
 import * as sitesService from '../services/sites.js';
 import * as renderService from '../services/render.js';
-import * as cloudflareService from '../services/cloudflare.js';
+import * as flyService from '../services/fly.js';
 import * as databaseService from '../services/database.js';
 import * as masterDbService from '../services/masterDb.js';
 import * as siteBootstrap from '../services/siteBootstrap.js';
@@ -438,61 +438,58 @@ router.post(
         return res.status(409).json({ error: 'Domain is already in use by another site' });
       }
 
-      // Check if Cloudflare is configured
-      if (!cloudflareService.isConfigured()) {
+      // Check if Fly is configured
+      if (!flyService.isConfigured()) {
         return res.status(500).json({
-          error: 'Cloudflare not configured. Please set CLOUDFLARE_API_TOKEN, CLOUDFLARE_ZONE_ID, and CLOUDFLARE_ORIGIN_SERVER.'
+          error: 'Fly.io not configured. Please set FLY_API_TOKEN and FLY_APP_NAME.'
         });
       }
 
-      // Add domain to Cloudflare (Custom Hostname)
-      console.log(`[CustomDomain] Adding ${domain} to Cloudflare`);
-      let cloudflareHostname;
-      let cloudflareHostnameId: string | undefined;
+      // Add domain to Fly (SSL certificate)
+      console.log(`[CustomDomain] Adding ${domain} to Fly`);
+      let flyCertificate;
 
       try {
-        cloudflareHostname = await cloudflareService.addCustomHostname(domain);
-        cloudflareHostnameId = cloudflareHostname.id;
-        console.log(`[CustomDomain] Successfully added ${domain} to Cloudflare, ID: ${cloudflareHostname.id}`);
+        flyCertificate = await flyService.addCertificate(domain);
+        console.log(`[CustomDomain] Successfully added ${domain} to Fly, status: ${flyCertificate.clientStatus}`);
 
         // If it's an apex domain, also add the www subdomain
         if (!domain.startsWith('www.')) {
           const wwwDomain = `www.${domain}`;
           console.log(`[CustomDomain] Also adding www subdomain: ${wwwDomain}`);
           try {
-            await cloudflareService.addCustomHostname(wwwDomain);
-            console.log(`[CustomDomain] Successfully added ${wwwDomain} to Cloudflare`);
+            await flyService.addCertificate(wwwDomain);
+            console.log(`[CustomDomain] Successfully added ${wwwDomain} to Fly`);
           } catch (wwwError) {
             // It's okay if www fails (might already exist or other reason)
             console.log(`[CustomDomain] Note: Failed to add ${wwwDomain} (may already exist):`, wwwError);
           }
         }
-      } catch (cloudflareError) {
-        console.error(`[CustomDomain] Failed to add domain to Cloudflare:`, cloudflareError);
+      } catch (flyError) {
+        console.error(`[CustomDomain] Failed to add domain to Fly:`, flyError);
         return res.status(500).json({
-          error: 'Failed to add domain to Cloudflare',
-          details: cloudflareError instanceof Error ? cloudflareError.message : 'Unknown error'
+          error: 'Failed to add domain to Fly',
+          details: flyError instanceof Error ? flyError.message : 'Unknown error'
         });
       }
 
-      // Save to Firestore (with Cloudflare hostname ID)
-      await sitesService.setCustomDomain(site.id, domain, cloudflareHostnameId);
+      // Save to Firestore
+      await sitesService.setCustomDomain(site.id, domain);
 
       // Save to master_sites (but not activated yet)
       await masterDbService.setMasterSiteCustomDomain(siteId, domain);
 
       // Get CNAME target for DNS instructions
-      const cnameTarget = cloudflareService.getCnameTarget();
+      const cnameTarget = flyService.getCnameTarget();
 
       return res.json({
         success: true,
         domain,
         status: 'pending',
-        cloudflareStatus: cloudflareHostname.status,
-        sslStatus: cloudflareHostname.ssl.status,
+        sslStatus: flyCertificate.clientStatus,
         dnsInstructions: {
           type: 'CNAME',
-          host: domain.startsWith('www.') ? 'www' : '@',
+          host: domain.startsWith('www.') ? 'www' : 'www',
           value: cnameTarget,
           note: 'Adaugă un CNAME record care pointează către ' + cnameTarget + '. Propagarea DNS poate dura până la 48 ore.',
         },
@@ -526,28 +523,25 @@ router.get(
         return res.json({ customDomain: null });
       }
 
-      // Get CNAME target from Cloudflare config
-      const cnameTarget = cloudflareService.getCnameTarget();
+      // Get CNAME target from Fly config
+      const cnameTarget = flyService.getCnameTarget();
 
-      // Get status from Cloudflare
-      let cloudflareStatus: 'pending' | 'active' | 'moved' | 'deleted' = 'pending';
-      let sslStatus: string = 'pending';
+      // Get status from Fly
+      let sslStatus = 'pending';
+      let verificationStatus = 'unverified';
+      let certificateStatus = 'pending';
 
-      if (site.customDomain.cloudflareHostnameId) {
-        try {
-          const cfHostname = await cloudflareService.getCustomHostname(site.customDomain.cloudflareHostnameId);
-          if (cfHostname) {
-            cloudflareStatus = cfHostname.status;
-            sslStatus = cfHostname.ssl.status;
-          }
-        } catch (err) {
-          console.error('Error fetching Cloudflare domain status:', err);
+      try {
+        const flyCert = await flyService.getCertificate(site.customDomain.domain);
+        if (flyCert) {
+          sslStatus = flyCert.clientStatus;
+          // 'Ready' means SSL is issued and working
+          verificationStatus = flyCert.clientStatus === 'Ready' ? 'verified' : 'unverified';
+          certificateStatus = flyCert.clientStatus === 'Ready' ? 'issued' : 'pending';
         }
+      } catch (err) {
+        console.error('Error fetching Fly certificate status:', err);
       }
-
-      // Map Cloudflare status to our verification status
-      const verificationStatus = cloudflareStatus === 'active' ? 'verified' : 'unverified';
-      const certificateStatus = sslStatus === 'active' ? 'issued' : 'pending';
 
       return res.json({
         customDomain: {
@@ -555,7 +549,6 @@ router.get(
           status: site.customDomain.status,
           verificationStatus,
           certificateStatus,
-          cloudflareStatus,
           sslStatus,
           addedAt: site.customDomain.addedAt.toDate().toISOString(),
           verifiedAt: site.customDomain.verifiedAt?.toDate().toISOString(),
@@ -564,7 +557,7 @@ router.get(
         },
         dnsInstructions: {
           type: 'CNAME',
-          host: site.customDomain.domain.startsWith('www.') ? 'www' : '@',
+          host: 'www',
           value: cnameTarget,
         },
       });
@@ -622,36 +615,24 @@ router.post(
       }
 
       // ============================================
-      // STEP 2: Check Cloudflare status
+      // STEP 2: Check Fly SSL status
       // ============================================
       let step2Passed = false;
-      let cloudflareStatus = 'pending';
       let sslStatus = 'pending';
 
-      if (!site.customDomain.cloudflareHostnameId) {
-        console.log('No Cloudflare hostname ID found, domain may not have been added to Cloudflare');
-        return res.json({
-          verified: false,
-          steps: {
-            domainAssigned: step1Passed,
-            dnsConfigured: false,
-          },
-          message: 'Domain not found in Cloudflare. Please remove and re-add the domain.',
-        });
-      }
-
       try {
-        const cfHostname = await cloudflareService.getCustomHostname(site.customDomain.cloudflareHostnameId);
-        if (cfHostname) {
-          cloudflareStatus = cfHostname.status;
-          sslStatus = cfHostname.ssl.status;
-          console.log(`Cloudflare status: ${cloudflareStatus}, SSL status: ${sslStatus}`);
+        const flyCert = await flyService.getCertificate(domainToVerify);
+        if (flyCert) {
+          sslStatus = flyCert.clientStatus;
+          console.log(`Fly SSL status: ${sslStatus}`);
 
-          // Domain is verified if Cloudflare status is 'active'
-          step2Passed = cloudflareStatus === 'active';
+          // Domain is verified if Fly status is 'Ready'
+          step2Passed = flyCert.clientStatus === 'Ready';
+        } else {
+          console.log('No Fly certificate found, domain may not have been added');
         }
       } catch (err) {
-        console.error('Error checking Cloudflare status:', err);
+        console.error('Error checking Fly status:', err);
       }
 
       // If both steps pass, update status
@@ -667,7 +648,6 @@ router.post(
           domainAssigned: step1Passed,
           dnsConfigured: step2Passed,
         },
-        cloudflareStatus,
         sslStatus,
         message: step2Passed
           ? 'Domain verified successfully. SSL certificate is active.'
@@ -702,30 +682,20 @@ router.post(
         return res.status(400).json({ error: 'No custom domain configured' });
       }
 
-      // Check Cloudflare status before activating
-      if (site.customDomain.cloudflareHostnameId) {
-        try {
-          const cfHostname = await cloudflareService.getCustomHostname(site.customDomain.cloudflareHostnameId);
+      // Check Fly SSL status before activating
+      try {
+        const flyCert = await flyService.getCertificate(site.customDomain.domain);
 
-          if (!cfHostname || cfHostname.status !== 'active') {
-            return res.status(400).json({
-              error: 'Domain not active in Cloudflare',
-              message: 'Please wait for DNS verification to complete.',
-              cloudflareStatus: cfHostname?.status || 'unknown',
-            });
-          }
-
-          if (cfHostname.ssl.status !== 'active') {
-            return res.status(400).json({
-              error: 'SSL certificate not ready',
-              message: 'SSL certificate is still being issued. Please wait.',
-              sslStatus: cfHostname.ssl.status,
-            });
-          }
-        } catch (err) {
-          console.error('Error checking Cloudflare status:', err);
-          return res.status(500).json({ error: 'Failed to check domain status' });
+        if (!flyCert || flyCert.clientStatus !== 'Ready') {
+          return res.status(400).json({
+            error: 'SSL certificate not ready',
+            message: 'Please wait for SSL certificate to be issued. Make sure your CNAME is configured.',
+            sslStatus: flyCert?.clientStatus || 'unknown',
+          });
         }
+      } catch (err) {
+        console.error('Error checking Fly status:', err);
+        return res.status(500).json({ error: 'Failed to check domain status' });
       }
 
       // Activate in master_sites for routing
@@ -770,25 +740,24 @@ router.delete(
 
       const domainToRemove = site.customDomain.domain;
 
-      // Remove from Cloudflare
-      if (site.customDomain.cloudflareHostnameId) {
-        try {
-          await cloudflareService.deleteCustomHostname(site.customDomain.cloudflareHostnameId);
-          console.log(`[CustomDomain] Deleted ${domainToRemove} from Cloudflare`);
+      // Remove from Fly
+      try {
+        await flyService.deleteCertificate(domainToRemove);
+        console.log(`[CustomDomain] Deleted ${domainToRemove} from Fly`);
 
-          // Also try to delete www subdomain if it exists
-          if (!domainToRemove.startsWith('www.')) {
-            const wwwDomain = `www.${domainToRemove}`;
-            const wwwHostname = await cloudflareService.getCustomHostnameByName(wwwDomain);
-            if (wwwHostname) {
-              await cloudflareService.deleteCustomHostname(wwwHostname.id);
-              console.log(`[CustomDomain] Deleted ${wwwDomain} from Cloudflare`);
-            }
+        // Also try to delete www subdomain if it exists
+        if (!domainToRemove.startsWith('www.')) {
+          const wwwDomain = `www.${domainToRemove}`;
+          try {
+            await flyService.deleteCertificate(wwwDomain);
+            console.log(`[CustomDomain] Deleted ${wwwDomain} from Fly`);
+          } catch {
+            // Ignore if www doesn't exist
           }
-        } catch (err) {
-          console.error('Error deleting from Cloudflare:', err);
-          // Continue with removal even if Cloudflare fails
         }
+      } catch (err) {
+        console.error('Error deleting from Fly:', err);
+        // Continue with removal even if Fly fails
       }
 
       // Remove from master_sites
