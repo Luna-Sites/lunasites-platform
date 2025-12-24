@@ -32,10 +32,17 @@ interface VerificationSteps {
   dnsConfigured: boolean;
 }
 
-interface DnsInstructions {
+interface DnsRecord {
   type: string;
   host: string;
   value: string;
+  description?: string;
+}
+
+interface DnsInstructions {
+  records: DnsRecord[];
+  cnameTarget: string;
+  flyIpv4: string;
   note?: string;
 }
 
