@@ -44,6 +44,11 @@ interface DnsInstructions {
   note?: string;
 }
 
+interface DomainEntry {
+  domain: CustomDomainStatus;
+  dnsInstructions: DnsInstructions | null;
+}
+
 export default function SiteSettings() {
   const { siteId } = useParams();
   const navigate = useNavigate();
@@ -51,8 +56,7 @@ export default function SiteSettings() {
 
   const [site, setSite] = useState<Site | null>(null);
   const [loading, setLoading] = useState(true);
-  const [customDomain, setCustomDomain] = useState<CustomDomainStatus | null>(null);
-  const [dnsInstructions, setDnsInstructions] = useState<DnsInstructions | null>(null);
+  const [domains, setDomains] = useState<DomainEntry[]>([]);
   const [newDomain, setNewDomain] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -73,8 +77,9 @@ export default function SiteSettings() {
     ? user.email.substring(0, 2).toUpperCase()
     : 'U';
 
-  // Check if domain is working (SSL Ready)
-  const isDomainWorking = customDomain?.sslStatus === 'Ready' || customDomain?.certificateStatus === 'issued';
+  // Check if a domain is working (SSL Ready)
+  const isDomainWorking = (domain: CustomDomainStatus) =>
+    domain.sslStatus === 'Ready' || domain.certificateStatus === 'issued';
 
   // Load site and domain status
   useEffect(() => {
@@ -89,15 +94,21 @@ export default function SiteSettings() {
         ]);
 
         setSite(siteData);
-        setCustomDomain(domainData.customDomain);
-        setDnsInstructions(domainData.dnsInstructions || null);
 
-        // Auto-activate if SSL is ready but status isn't active
-        if (domainData.customDomain &&
-            domainData.customDomain.sslStatus === 'Ready' &&
-            domainData.customDomain.status !== 'active') {
-          // Silently activate in background
-          api.activateCustomDomain(siteId).catch(console.error);
+        // Convert single domain to array for now
+        if (domainData.customDomain) {
+          setDomains([{
+            domain: domainData.customDomain,
+            dnsInstructions: domainData.dnsInstructions || null
+          }]);
+
+          // Auto-activate if SSL is ready but status isn't active
+          if (domainData.customDomain.sslStatus === 'Ready' &&
+              domainData.customDomain.status !== 'active') {
+            api.activateCustomDomain(siteId).catch(console.error);
+          }
+        } else {
+          setDomains([]);
         }
       } catch (err) {
         console.error('Error loading site data:', err);
@@ -117,17 +128,27 @@ export default function SiteSettings() {
     try {
       setActionLoading('refresh');
       const domainData = await api.getCustomDomainStatus(siteId);
-      setCustomDomain(domainData.customDomain);
-      setDnsInstructions(domainData.dnsInstructions || null);
 
-      // Auto-activate if SSL is ready
-      if (domainData.customDomain &&
-          domainData.customDomain.sslStatus === 'Ready' &&
-          domainData.customDomain.status !== 'active') {
-        await api.activateCustomDomain(siteId);
-        // Refresh again to get updated status
-        const updatedData = await api.getCustomDomainStatus(siteId);
-        setCustomDomain(updatedData.customDomain);
+      if (domainData.customDomain) {
+        setDomains([{
+          domain: domainData.customDomain,
+          dnsInstructions: domainData.dnsInstructions || null
+        }]);
+
+        // Auto-activate if SSL is ready
+        if (domainData.customDomain.sslStatus === 'Ready' &&
+            domainData.customDomain.status !== 'active') {
+          await api.activateCustomDomain(siteId);
+          const updatedData = await api.getCustomDomainStatus(siteId);
+          if (updatedData.customDomain) {
+            setDomains([{
+              domain: updatedData.customDomain,
+              dnsInstructions: updatedData.dnsInstructions || null
+            }]);
+          }
+        }
+      } else {
+        setDomains([]);
       }
     } catch (err) {
       console.error('Error refreshing status:', err);
@@ -147,15 +168,18 @@ export default function SiteSettings() {
 
     try {
       const result = await api.addCustomDomain(siteId, newDomain.trim());
-      setCustomDomain({
-        domain: result.domain,
-        status: 'pending',
-        verificationStatus: 'unverified',
-        certificateStatus: 'pending',
-        sslStatus: result.sslStatus,
-        addedAt: new Date().toISOString(),
-      });
-      setDnsInstructions(result.dnsInstructions);
+      const newEntry: DomainEntry = {
+        domain: {
+          domain: result.domain,
+          status: 'pending',
+          verificationStatus: 'unverified',
+          certificateStatus: 'pending',
+          sslStatus: result.sslStatus,
+          addedAt: new Date().toISOString(),
+        },
+        dnsInstructions: result.dnsInstructions
+      };
+      setDomains(prev => [...prev, newEntry]);
       setNewDomain('');
       setShowAddForm(false);
       setSuccess('Domain added. Configure DNS records below.');
@@ -167,19 +191,18 @@ export default function SiteSettings() {
   };
 
   // Remove domain
-  const handleRemove = async () => {
+  const handleRemove = async (domainToRemove: string) => {
     if (!siteId) return;
 
-    if (!confirm('Are you sure you want to remove this custom domain?')) return;
+    if (!confirm(`Are you sure you want to remove ${domainToRemove}?`)) return;
 
     setError(null);
     setSuccess(null);
-    setActionLoading('remove');
+    setActionLoading(`remove-${domainToRemove}`);
 
     try {
       await api.removeCustomDomain(siteId);
-      setCustomDomain(null);
-      setDnsInstructions(null);
+      setDomains(prev => prev.filter(d => d.domain.domain !== domainToRemove));
       setSuccess('Custom domain removed successfully');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to remove domain');
@@ -332,7 +355,7 @@ export default function SiteSettings() {
                     Custom Domains
                   </h2>
                   <div className="flex items-center gap-2">
-                    {customDomain && (
+                    {domains.length > 0 && (
                       <button
                         onClick={refreshStatus}
                         disabled={actionLoading === 'refresh'}
@@ -342,7 +365,7 @@ export default function SiteSettings() {
                         <RefreshCw className={`w-4 h-4 ${actionLoading === 'refresh' ? 'animate-spin' : ''}`} />
                       </button>
                     )}
-                    {!customDomain && !showAddForm && (
+                    {!showAddForm && (
                       <button
                         onClick={() => setShowAddForm(true)}
                         className="text-[#5A318F] hover:text-[#4A2875] flex items-center gap-1 text-sm font-medium"
@@ -355,8 +378,8 @@ export default function SiteSettings() {
                 </div>
 
                 {/* Add Domain Form */}
-                {showAddForm && !customDomain && (
-                  <form onSubmit={handleAddDomain} className="space-y-4 mb-6">
+                {showAddForm && (
+                  <form onSubmit={handleAddDomain} className="space-y-4 mb-6 p-4 bg-slate-50 rounded-lg">
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-2">
                         Domain Name
@@ -366,7 +389,7 @@ export default function SiteSettings() {
                         value={newDomain}
                         onChange={(e) => setNewDomain(e.target.value)}
                         placeholder="example.com"
-                        className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#5A318F] focus:border-transparent outline-none transition-all"
+                        className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#5A318F] focus:border-transparent outline-none transition-all bg-white"
                       />
                       <p className="text-xs text-slate-400 mt-1">
                         Enter your domain without http:// or https://
@@ -382,7 +405,7 @@ export default function SiteSettings() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setShowAddForm(false)}
+                        onClick={() => { setShowAddForm(false); setNewDomain(''); }}
                         className="px-4 py-2.5 text-slate-600 hover:text-slate-900"
                       >
                         Cancel
@@ -392,7 +415,7 @@ export default function SiteSettings() {
                 )}
 
                 {/* No domains message */}
-                {!customDomain && !showAddForm && (
+                {domains.length === 0 && !showAddForm && (
                   <div className="text-center py-8 text-slate-500">
                     <Globe className="w-12 h-12 mx-auto mb-3 text-slate-300" />
                     <p>No custom domains configured</p>
@@ -400,149 +423,145 @@ export default function SiteSettings() {
                   </div>
                 )}
 
-                {/* Domain Status */}
-                {customDomain && (
+                {/* Domain List */}
+                {domains.length > 0 && (
                   <div className="space-y-6">
-                    {/* Domain Info */}
-                    <div className="flex items-center justify-between py-3 px-4 bg-slate-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        {isDomainWorking ? (
-                          <CheckCircle className="w-5 h-5 text-green-500" />
-                        ) : (
-                          <Clock className="w-5 h-5 text-amber-500" />
-                        )}
-                        <span className="font-medium text-slate-900">{customDomain.domain}</span>
-                        {isDomainWorking ? (
-                          <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
-                            Working
-                          </span>
-                        ) : (
-                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">
-                            Configuring
-                          </span>
-                        )}
-                      </div>
-                      {isDomainWorking && (
-                        <a
-                          href={`https://${customDomain.domain}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-[#5A318F] hover:text-[#4A2875] flex items-center gap-1 text-sm"
-                        >
-                          Visit <ExternalLink className="w-4 h-4" />
-                        </a>
-                      )}
-                    </div>
+                    {domains.map((entry, index) => {
+                      const { domain: domainStatus, dnsInstructions } = entry;
+                      const working = isDomainWorking(domainStatus);
 
-                    {/* Domain Working Message */}
-                    {isDomainWorking && (
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
-                        <Shield className="w-6 h-6 text-green-600" />
-                        <div>
-                          <p className="font-medium text-green-800">Domain is working properly</p>
-                          <p className="text-sm text-green-600">SSL certificate is active and your domain is live.</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* DNS Instructions - Only show if not working */}
-                    {!isDomainWorking && dnsInstructions && (
-                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                        <h3 className="font-medium text-amber-900 mb-3">DNS Configuration Required</h3>
-                        <p className="text-sm text-amber-700 mb-4">
-                          Add the following DNS records at your domain registrar:
-                        </p>
-
-                        {/* Display all DNS records with status */}
-                        <div className="space-y-3">
-                          {dnsInstructions.records?.map((record, index) => (
-                            <div key={index} className="bg-white rounded-lg p-4 font-mono text-sm border border-amber-100">
-                              <div className="flex justify-between items-center mb-2">
-                                <span className="text-xs text-slate-500 uppercase font-sans">{record.description}</span>
-                                {record.configured === false && (
-                                  <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded font-sans">Not configured</span>
+                      return (
+                        <div key={domainStatus.domain} className={`${index > 0 ? 'pt-6 border-t border-slate-200' : ''}`}>
+                          {/* Domain Info */}
+                          <div className="flex items-center justify-between py-3 px-4 bg-slate-50 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              {working ? (
+                                <CheckCircle className="w-5 h-5 text-green-500" />
+                              ) : (
+                                <Clock className="w-5 h-5 text-amber-500" />
+                              )}
+                              <span className="font-medium text-slate-900">{domainStatus.domain}</span>
+                              {working ? (
+                                <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">
+                                  Working
+                                </span>
+                              ) : (
+                                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">
+                                  Configuring
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {working && (
+                                <a
+                                  href={`https://${domainStatus.domain}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[#5A318F] hover:text-[#4A2875] flex items-center gap-1 text-sm"
+                                >
+                                  Visit <ExternalLink className="w-4 h-4" />
+                                </a>
+                              )}
+                              <button
+                                onClick={() => handleRemove(domainStatus.domain)}
+                                disabled={actionLoading === `remove-${domainStatus.domain}`}
+                                className="text-red-500 hover:text-red-700 p-1"
+                                title="Remove domain"
+                              >
+                                {actionLoading === `remove-${domainStatus.domain}` ? (
+                                  <RefreshCw className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-4 h-4" />
                                 )}
-                                {record.configured === true && (
-                                  <span className="text-xs bg-green-100 text-green-600 px-2 py-0.5 rounded font-sans">Configured</span>
-                                )}
-                              </div>
-                              <div className="space-y-2">
-                                <div className="flex justify-between">
-                                  <span className="text-slate-500">Type:</span>
-                                  <span className="text-slate-900 font-semibold">{record.type}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-slate-500">Host:</span>
-                                  <span className="text-slate-900 font-semibold">{record.host}</span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                  <span className="text-slate-500">Value:</span>
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-slate-900 font-semibold break-all text-right">{record.value}</span>
-                                    <button
-                                      onClick={() => copyToClipboard(record.value)}
-                                      className="text-slate-400 hover:text-slate-600 flex-shrink-0"
-                                      title="Copy to clipboard"
-                                    >
-                                      <Copy className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                </div>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Domain Working Message */}
+                          {working && (
+                            <div className="mt-4 bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3">
+                              <Shield className="w-6 h-6 text-green-600" />
+                              <div>
+                                <p className="font-medium text-green-800">Domain is working properly</p>
+                                <p className="text-sm text-green-600">SSL certificate is active and your domain is live.</p>
                               </div>
                             </div>
-                          ))}
+                          )}
+
+                          {/* DNS Instructions - Only show if not working */}
+                          {!working && dnsInstructions && (
+                            <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
+                              <h3 className="font-medium text-amber-900 mb-3">DNS Configuration Required</h3>
+                              <p className="text-sm text-amber-700 mb-4">
+                                Add the following DNS records at your domain registrar:
+                              </p>
+
+                              {/* Display all DNS records */}
+                              <div className="space-y-3">
+                                {dnsInstructions.records?.map((record: DnsRecord, idx: number) => (
+                                  <div key={idx} className="bg-white rounded-lg p-4 font-mono text-sm border border-amber-100">
+                                    <div className="flex justify-between items-center mb-2">
+                                      <span className="text-xs text-slate-500 uppercase font-sans">{record.description}</span>
+                                    </div>
+                                    <div className="space-y-2">
+                                      <div className="flex justify-between">
+                                        <span className="text-slate-500">Type:</span>
+                                        <span className="text-slate-900 font-semibold">{record.type}</span>
+                                      </div>
+                                      <div className="flex justify-between">
+                                        <span className="text-slate-500">Host:</span>
+                                        <span className="text-slate-900 font-semibold">{record.host}</span>
+                                      </div>
+                                      <div className="flex justify-between items-center">
+                                        <span className="text-slate-500">Value:</span>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-slate-900 font-semibold break-all text-right">{record.value}</span>
+                                          <button
+                                            onClick={() => copyToClipboard(record.value)}
+                                            className="text-slate-400 hover:text-slate-600 flex-shrink-0"
+                                            title="Copy to clipboard"
+                                          >
+                                            <Copy className="w-4 h-4" />
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+
+                              {copied && (
+                                <p className="text-xs text-green-600 mt-2">Copied to clipboard!</p>
+                              )}
+
+                              <p className="text-xs text-amber-600 mt-3">
+                                {dnsInstructions.note || 'DNS propagation can take up to 48 hours. Click refresh to check status.'}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Status Info */}
+                          {!working && (
+                            <div className="mt-4 flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+                              <RefreshCw className="w-5 h-5 text-amber-500 animate-spin" />
+                              <div className="flex-1">
+                                <p className="text-sm font-medium text-slate-700">Waiting for DNS propagation</p>
+                                <p className="text-xs text-slate-500">
+                                  SSL Status: {domainStatus.sslStatus || 'Pending'}
+                                </p>
+                              </div>
+                              <button
+                                onClick={refreshStatus}
+                                disabled={actionLoading === 'refresh'}
+                                className="text-[#5A318F] hover:text-[#4A2875] text-sm font-medium"
+                              >
+                                Check Status
+                              </button>
+                            </div>
+                          )}
                         </div>
-
-                        {copied && (
-                          <p className="text-xs text-green-600 mt-2">Copied to clipboard!</p>
-                        )}
-
-                        <p className="text-xs text-amber-600 mt-3">
-                          {dnsInstructions.note || 'DNS propagation can take up to 48 hours. Click refresh to check status.'}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Status Info */}
-                    {!isDomainWorking && (
-                      <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
-                        <RefreshCw className="w-5 h-5 text-amber-500 animate-spin" />
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-slate-700">Waiting for DNS propagation</p>
-                          <p className="text-xs text-slate-500">
-                            SSL Status: {customDomain.sslStatus || 'Pending'}
-                          </p>
-                        </div>
-                        <button
-                          onClick={refreshStatus}
-                          disabled={actionLoading === 'refresh'}
-                          className="text-[#5A318F] hover:text-[#4A2875] text-sm font-medium"
-                        >
-                          Check Status
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Remove Button */}
-                    <div className="pt-4 border-t border-slate-200">
-                      <button
-                        onClick={handleRemove}
-                        disabled={actionLoading === 'remove'}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 px-4 py-2 rounded-lg transition-colors disabled:opacity-50 flex items-center gap-2 text-sm"
-                      >
-                        {actionLoading === 'remove' ? (
-                          <>
-                            <RefreshCw className="w-4 h-4 animate-spin" />
-                            Removing...
-                          </>
-                        ) : (
-                          <>
-                            <Trash2 className="w-4 h-4" />
-                            Remove Domain
-                          </>
-                        )}
-                      </button>
-                    </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
