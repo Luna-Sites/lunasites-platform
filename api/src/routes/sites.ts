@@ -485,13 +485,18 @@ router.post(
       }
 
       // Save to Firestore
+      console.log(`[CustomDomain] Saving to Firestore for site ${site.id}`);
       await sitesService.setCustomDomain(site.id, domain);
+      console.log(`[CustomDomain] Saved to Firestore`);
 
       // Save to master_sites (but not activated yet)
+      console.log(`[CustomDomain] Saving to master_sites for ${siteId}`);
       await masterDbService.setMasterSiteCustomDomain(siteId, domain);
+      console.log(`[CustomDomain] Saved to master_sites`);
 
       // Get CNAME target for DNS instructions
       const cnameTarget = flyService.getCnameTarget();
+      console.log(`[CustomDomain] Returning success response for ${domain}`);
 
       return res.json({
         success: true,
