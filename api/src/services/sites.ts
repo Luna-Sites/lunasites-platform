@@ -22,11 +22,21 @@ export interface Site {
   renderUrl?: string;
   createdAt: admin.firestore.Timestamp;
   updatedAt: admin.firestore.Timestamp;
-  // Custom domain
+  // Multiple custom domains
+  customDomains?: CustomDomainInfo[];
+  // Legacy single domain (kept for backward compatibility)
   customDomain?: CustomDomainInfo;
 }
 
 const sitesCollection = db.collection('sites');
+
+// Helper to migrate legacy single domain to array
+function migrateLegacyDomain(site: Site): Site {
+  if (site.customDomain && !site.customDomains) {
+    site.customDomains = [site.customDomain];
+  }
+  return site;
+}
 
 export async function createSite(data: {
   siteId: string;
@@ -55,7 +65,7 @@ export async function createSite(data: {
 export async function getSiteById(id: string): Promise<Site | null> {
   const doc = await sitesCollection.doc(id).get();
   if (!doc.exists) return null;
-  return doc.data() as Site;
+  return migrateLegacyDomain(doc.data() as Site);
 }
 
 export async function getSiteBySiteId(siteId: string): Promise<Site | null> {
@@ -65,7 +75,7 @@ export async function getSiteBySiteId(siteId: string): Promise<Site | null> {
     .get();
 
   if (snapshot.empty) return null;
-  return snapshot.docs[0].data() as Site;
+  return migrateLegacyDomain(snapshot.docs[0].data() as Site);
 }
 
 export async function getSitesByUserId(userId: string): Promise<Site[]> {
@@ -74,7 +84,7 @@ export async function getSitesByUserId(userId: string): Promise<Site[]> {
     .orderBy('createdAt', 'desc')
     .get();
 
-  return snapshot.docs.map((doc) => doc.data() as Site);
+  return snapshot.docs.map((doc) => migrateLegacyDomain(doc.data() as Site));
 }
 
 export async function updateSite(id: string, data: Partial<Site>): Promise<void> {
@@ -114,58 +124,103 @@ export async function checkSiteAvailability(siteId: string): Promise<boolean> {
 }
 
 // ============================================
-// CUSTOM DOMAIN MANAGEMENT
+// CUSTOM DOMAIN MANAGEMENT (Multiple domains)
 // ============================================
 
 /**
- * Set custom domain for a site (initial add)
+ * Add a custom domain to a site
  */
-export async function setCustomDomain(id: string, domain: string): Promise<void> {
-  const customDomain: CustomDomainInfo = {
+export async function addCustomDomain(id: string, domain: string): Promise<void> {
+  const site = await getSiteById(id);
+  if (!site) throw new Error('Site not found');
+
+  const customDomains = site.customDomains || [];
+
+  // Check if domain already exists
+  if (customDomains.some(d => d.domain === domain)) {
+    throw new Error('Domain already added to this site');
+  }
+
+  const newDomain: CustomDomainInfo = {
     domain,
     status: 'pending',
     addedAt: admin.firestore.Timestamp.now(),
   };
 
-  await updateSite(id, { customDomain });
+  customDomains.push(newDomain);
+
+  await sitesCollection.doc(id).update({
+    customDomains,
+    updatedAt: admin.firestore.Timestamp.now(),
+  });
 }
 
 /**
- * Update custom domain status
+ * Get all custom domains for a site
+ */
+export async function getCustomDomains(id: string): Promise<CustomDomainInfo[]> {
+  const site = await getSiteById(id);
+  if (!site) return [];
+  return site.customDomains || [];
+}
+
+/**
+ * Get a specific custom domain for a site
+ */
+export async function getCustomDomain(id: string, domain: string): Promise<CustomDomainInfo | null> {
+  const domains = await getCustomDomains(id);
+  return domains.find(d => d.domain === domain) || null;
+}
+
+/**
+ * Update custom domain status (for a specific domain)
  */
 export async function updateCustomDomainStatus(
   id: string,
+  domain: string,
   status: CustomDomainInfo['status'],
   errorMessage?: string
 ): Promise<void> {
   const site = await getSiteById(id);
-  if (!site || !site.customDomain) return;
+  if (!site) return;
 
-  const updates: Partial<CustomDomainInfo> = { status };
+  const customDomains = site.customDomains || [];
+  const domainIndex = customDomains.findIndex(d => d.domain === domain);
+  if (domainIndex === -1) return;
+
+  // Update the domain in the array
+  customDomains[domainIndex].status = status;
 
   if (status === 'verified') {
-    updates.verifiedAt = admin.firestore.Timestamp.now();
+    customDomains[domainIndex].verifiedAt = admin.firestore.Timestamp.now();
   } else if (status === 'active') {
-    updates.activatedAt = admin.firestore.Timestamp.now();
+    customDomains[domainIndex].activatedAt = admin.firestore.Timestamp.now();
   } else if (status === 'error' && errorMessage) {
-    updates.errorMessage = errorMessage;
+    customDomains[domainIndex].errorMessage = errorMessage;
   }
 
   await sitesCollection.doc(id).update({
-    'customDomain.status': status,
-    ...(updates.verifiedAt && { 'customDomain.verifiedAt': updates.verifiedAt }),
-    ...(updates.activatedAt && { 'customDomain.activatedAt': updates.activatedAt }),
-    ...(updates.errorMessage && { 'customDomain.errorMessage': updates.errorMessage }),
+    customDomains,
     updatedAt: admin.firestore.Timestamp.now(),
   });
 }
 
 /**
- * Remove custom domain from a site
+ * Remove a specific custom domain from a site
  */
-export async function removeCustomDomain(id: string): Promise<void> {
+export async function removeCustomDomain(id: string, domain: string): Promise<void> {
+  const site = await getSiteById(id);
+  if (!site) return;
+
+  const customDomains = (site.customDomains || []).filter(d => d.domain !== domain);
+
   await sitesCollection.doc(id).update({
-    customDomain: admin.firestore.FieldValue.delete(),
+    customDomains,
     updatedAt: admin.firestore.Timestamp.now(),
   });
+}
+
+// Legacy function for backward compatibility
+export async function setCustomDomain(id: string, domain: string): Promise<void> {
+  return addCustomDomain(id, domain);
 }

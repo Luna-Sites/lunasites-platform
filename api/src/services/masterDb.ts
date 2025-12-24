@@ -217,83 +217,160 @@ export async function deleteMasterSite(siteId: string): Promise<void> {
 }
 
 // ============================================
-// CUSTOM DOMAIN MANAGEMENT
+// CUSTOM DOMAIN MANAGEMENT (Multiple domains per site)
 // ============================================
 
+export interface SiteCustomDomain {
+  id: string;
+  site_id: string;
+  domain: string;
+  active: boolean;
+  verified_at?: Date;
+  activated_at?: Date;
+  created_at: Date;
+}
+
 /**
- * Set custom domain for a site (without activating it)
+ * Initialize the site_custom_domains table (call from initMasterSitesTable)
+ */
+export async function initCustomDomainsTable(): Promise<void> {
+  const pool = getMasterPool();
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS site_custom_domains (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      site_id VARCHAR(100) NOT NULL REFERENCES master_sites(site_id) ON DELETE CASCADE,
+      domain VARCHAR(255) UNIQUE NOT NULL,
+      active BOOLEAN DEFAULT false,
+      verified_at TIMESTAMP,
+      activated_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_site_custom_domains_site_id ON site_custom_domains(site_id);
+    CREATE INDEX IF NOT EXISTS idx_site_custom_domains_domain ON site_custom_domains(domain);
+    CREATE INDEX IF NOT EXISTS idx_site_custom_domains_active ON site_custom_domains(active);
+  `);
+  console.log('[MasterDB] Custom domains table initialized');
+}
+
+/**
+ * Add a custom domain for a site
+ */
+export async function addMasterSiteCustomDomain(
+  siteId: string,
+  domain: string
+): Promise<void> {
+  const pool = getMasterPool();
+  await pool.query(
+    `INSERT INTO site_custom_domains (site_id, domain, active)
+     VALUES ($1, $2, false)
+     ON CONFLICT (domain) DO NOTHING`,
+    [siteId, domain]
+  );
+}
+
+/**
+ * Set custom domain for a site (legacy - adds domain)
  */
 export async function setMasterSiteCustomDomain(
   siteId: string,
   customDomain: string
 ): Promise<void> {
-  const pool = getMasterPool();
-  await pool.query(
-    `UPDATE master_sites
-     SET custom_domain = $2,
-         custom_domain_active = false,
-         updated_at = NOW()
-     WHERE site_id = $1`,
-    [siteId, customDomain]
-  );
+  return addMasterSiteCustomDomain(siteId, customDomain);
 }
 
 /**
- * Mark custom domain as verified
+ * Get all custom domains for a site
  */
-export async function markCustomDomainVerified(siteId: string): Promise<void> {
+export async function getMasterSiteCustomDomains(siteId: string): Promise<SiteCustomDomain[]> {
   const pool = getMasterPool();
-  await pool.query(
-    `UPDATE master_sites
-     SET custom_domain_verified_at = NOW(),
-         updated_at = NOW()
-     WHERE site_id = $1`,
+  const result = await pool.query(
+    'SELECT * FROM site_custom_domains WHERE site_id = $1 ORDER BY created_at',
     [siteId]
   );
+  return result.rows;
 }
 
 /**
- * Activate custom domain for routing (only call after DNS + SSL verified)
+ * Mark custom domain as verified (specific domain)
  */
-export async function activateMasterSiteCustomDomain(siteId: string): Promise<void> {
+export async function markCustomDomainVerified(siteId: string, domain?: string): Promise<void> {
   const pool = getMasterPool();
-  await pool.query(
-    `UPDATE master_sites
-     SET custom_domain_active = true,
-         custom_domain_activated_at = NOW(),
-         updated_at = NOW()
-     WHERE site_id = $1 AND custom_domain IS NOT NULL`,
-    [siteId]
-  );
+  if (domain) {
+    await pool.query(
+      `UPDATE site_custom_domains SET verified_at = NOW() WHERE site_id = $1 AND domain = $2`,
+      [siteId, domain]
+    );
+  } else {
+    // Legacy: mark all domains for site as verified
+    await pool.query(
+      `UPDATE site_custom_domains SET verified_at = NOW() WHERE site_id = $1`,
+      [siteId]
+    );
+  }
 }
 
 /**
- * Remove custom domain from a site
+ * Activate custom domain for routing (specific domain)
  */
-export async function removeMasterSiteCustomDomain(siteId: string): Promise<void> {
+export async function activateMasterSiteCustomDomain(siteId: string, domain?: string): Promise<void> {
   const pool = getMasterPool();
-  await pool.query(
-    `UPDATE master_sites
-     SET custom_domain = NULL,
-         custom_domain_active = false,
-         custom_domain_verified_at = NULL,
-         custom_domain_activated_at = NULL,
-         updated_at = NOW()
-     WHERE site_id = $1`,
-    [siteId]
-  );
+  if (domain) {
+    await pool.query(
+      `UPDATE site_custom_domains SET active = true, activated_at = NOW() WHERE site_id = $1 AND domain = $2`,
+      [siteId, domain]
+    );
+  } else {
+    // Legacy: activate all domains for site
+    await pool.query(
+      `UPDATE site_custom_domains SET active = true, activated_at = NOW() WHERE site_id = $1`,
+      [siteId]
+    );
+  }
 }
 
 /**
- * Get site by custom domain (for routing)
+ * Remove a specific custom domain from a site
+ */
+export async function removeMasterSiteCustomDomain(siteId: string, domain?: string): Promise<void> {
+  const pool = getMasterPool();
+  if (domain) {
+    await pool.query(
+      'DELETE FROM site_custom_domains WHERE site_id = $1 AND domain = $2',
+      [siteId, domain]
+    );
+  } else {
+    // Legacy: remove all domains for site
+    await pool.query(
+      'DELETE FROM site_custom_domains WHERE site_id = $1',
+      [siteId]
+    );
+  }
+}
+
+/**
+ * Get site by custom domain (for routing) - checks new table first, then legacy
  */
 export async function getMasterSiteByCustomDomain(customDomain: string): Promise<MasterSiteRecord | null> {
   const pool = getMasterPool();
-  const result = await pool.query(
+
+  // First check new table
+  const newResult = await pool.query(
+    `SELECT ms.* FROM master_sites ms
+     JOIN site_custom_domains scd ON ms.site_id = scd.site_id
+     WHERE scd.domain = $1 AND scd.active = true AND ms.active = true`,
+    [customDomain]
+  );
+  if (newResult.rows.length > 0) {
+    return newResult.rows[0];
+  }
+
+  // Fallback to legacy column
+  const legacyResult = await pool.query(
     'SELECT * FROM master_sites WHERE custom_domain = $1 AND custom_domain_active = true AND active = true',
     [customDomain]
   );
-  return result.rows[0] || null;
+  return legacyResult.rows[0] || null;
 }
 
 /**
@@ -301,16 +378,26 @@ export async function getMasterSiteByCustomDomain(customDomain: string): Promise
  */
 export async function isCustomDomainTaken(customDomain: string, excludeSiteId?: string): Promise<boolean> {
   const pool = getMasterPool();
-  let query = 'SELECT 1 FROM master_sites WHERE custom_domain = $1';
-  const params: string[] = [customDomain];
 
+  // Check new table
+  let query = 'SELECT 1 FROM site_custom_domains WHERE domain = $1';
+  const params: string[] = [customDomain];
   if (excludeSiteId) {
     query += ' AND site_id != $2';
     params.push(excludeSiteId);
   }
+  const newResult = await pool.query(query, params);
+  if (newResult.rows.length > 0) return true;
 
-  const result = await pool.query(query, params);
-  return result.rows.length > 0;
+  // Check legacy column
+  let legacyQuery = 'SELECT 1 FROM master_sites WHERE custom_domain = $1';
+  const legacyParams: string[] = [customDomain];
+  if (excludeSiteId) {
+    legacyQuery += ' AND site_id != $2';
+    legacyParams.push(excludeSiteId);
+  }
+  const legacyResult = await pool.query(legacyQuery, legacyParams);
+  return legacyResult.rows.length > 0;
 }
 
 /**

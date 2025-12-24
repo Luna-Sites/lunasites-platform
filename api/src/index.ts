@@ -4,7 +4,7 @@ import admin from 'firebase-admin';
 import { config } from './config/index.js';
 import sitesRouter from './routes/sites.js';
 import templatesRouter from './routes/templates.js';
-import { initTemplatesTable, initMasterSitesTable } from './services/masterDb.js';
+import { initTemplatesTable, initMasterSitesTable, initCustomDomainsTable } from './services/masterDb.js';
 import { authMiddleware, AuthenticatedRequest } from './middleware/auth.js';
 
 const app = express();
@@ -12,6 +12,7 @@ const app = express();
 // Initialize database tables
 initMasterSitesTable().catch(console.error);
 initTemplatesTable().catch(console.error);
+initCustomDomainsTable().catch(console.error);
 
 // Middleware
 app.use(

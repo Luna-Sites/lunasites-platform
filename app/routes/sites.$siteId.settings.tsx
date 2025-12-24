@@ -90,22 +90,24 @@ export default function SiteSettings() {
         setLoading(true);
         const [siteData, domainData] = await Promise.all([
           api.getSite(siteId),
-          api.getCustomDomainStatus(siteId),
+          api.getCustomDomains(siteId),
         ]);
 
         setSite(siteData);
 
-        // Convert single domain to array for now
-        if (domainData.customDomain) {
-          setDomains([{
-            domain: domainData.customDomain,
+        // Map array of domains to DomainEntry format
+        if (domainData.customDomains && domainData.customDomains.length > 0) {
+          const entries = domainData.customDomains.map(d => ({
+            domain: d,
             dnsInstructions: domainData.dnsInstructions || null
-          }]);
+          }));
+          setDomains(entries);
 
-          // Auto-activate if SSL is ready but status isn't active
-          if (domainData.customDomain.sslStatus === 'Ready' &&
-              domainData.customDomain.status !== 'active') {
-            api.activateCustomDomain(siteId).catch(console.error);
+          // Auto-activate domains with SSL Ready
+          for (const d of domainData.customDomains) {
+            if (d.sslStatus === 'Ready' && d.status !== 'active') {
+              api.activateCustomDomain(siteId, d.domain).catch(console.error);
+            }
           }
         } else {
           setDomains([]);
@@ -127,25 +129,30 @@ export default function SiteSettings() {
 
     try {
       setActionLoading('refresh');
-      const domainData = await api.getCustomDomainStatus(siteId);
+      const domainData = await api.getCustomDomains(siteId);
 
-      if (domainData.customDomain) {
-        setDomains([{
-          domain: domainData.customDomain,
+      if (domainData.customDomains && domainData.customDomains.length > 0) {
+        const entries = domainData.customDomains.map(d => ({
+          domain: d,
           dnsInstructions: domainData.dnsInstructions || null
-        }]);
+        }));
+        setDomains(entries);
 
-        // Auto-activate if SSL is ready
-        if (domainData.customDomain.sslStatus === 'Ready' &&
-            domainData.customDomain.status !== 'active') {
-          await api.activateCustomDomain(siteId);
-          const updatedData = await api.getCustomDomainStatus(siteId);
-          if (updatedData.customDomain) {
-            setDomains([{
-              domain: updatedData.customDomain,
-              dnsInstructions: updatedData.dnsInstructions || null
-            }]);
+        // Auto-activate domains with SSL Ready
+        for (const d of domainData.customDomains) {
+          if (d.sslStatus === 'Ready' && d.status !== 'active') {
+            await api.activateCustomDomain(siteId, d.domain);
           }
+        }
+
+        // Refresh again to get updated statuses
+        const updatedData = await api.getCustomDomains(siteId);
+        if (updatedData.customDomains && updatedData.customDomains.length > 0) {
+          const updatedEntries = updatedData.customDomains.map(d => ({
+            domain: d,
+            dnsInstructions: updatedData.dnsInstructions || null
+          }));
+          setDomains(updatedEntries);
         }
       } else {
         setDomains([]);
@@ -201,7 +208,7 @@ export default function SiteSettings() {
     setActionLoading(`remove-${domainToRemove}`);
 
     try {
-      await api.removeCustomDomain(siteId);
+      await api.removeCustomDomain(siteId, domainToRemove);
       setDomains(prev => prev.filter(d => d.domain.domain !== domainToRemove));
       setSuccess('Custom domain removed successfully');
     } catch (err) {

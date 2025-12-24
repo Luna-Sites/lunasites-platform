@@ -438,12 +438,7 @@ router.post(
         return res.status(403).json({ error: 'Access denied' });
       }
 
-      // Check if site already has a custom domain
-      if (site.customDomain) {
-        return res.status(400).json({ error: 'Site already has a custom domain. Remove it first.' });
-      }
-
-      // Check if domain is already taken by another site
+      // Check if this specific domain is already taken by another site
       const domainTaken = await masterDbService.isCustomDomainTaken(domain, siteId);
       if (domainTaken) {
         return res.status(409).json({ error: 'Domain is already in use by another site' });
@@ -539,7 +534,7 @@ router.post(
   }
 );
 
-// Get custom domain status
+// Get custom domains status (returns array)
 router.get(
   '/:siteId/domains',
   authMiddleware,
@@ -557,45 +552,52 @@ router.get(
         return res.status(403).json({ error: 'Access denied' });
       }
 
-      if (!site.customDomain) {
-        return res.json({ customDomain: null });
+      // Get all custom domains (from new array or legacy single domain)
+      const customDomains = site.customDomains || (site.customDomain ? [site.customDomain] : []);
+
+      if (customDomains.length === 0) {
+        return res.json({ customDomains: [] });
       }
 
       // Get CNAME target from Fly config
       const cnameTarget = flyService.getCnameTarget();
+      const flyIpv4 = '66.241.125.120';
+      const flyIpv6 = '2a09:8280:1::bd:b552:0';
 
-      // Get status from Fly
-      let sslStatus = 'pending';
-      let verificationStatus = 'unverified';
-      let certificateStatus = 'pending';
+      // Get status from Fly for each domain
+      const domainsWithStatus = await Promise.all(
+        customDomains.map(async (domainInfo) => {
+          let sslStatus = 'pending';
+          let verificationStatus = 'unverified';
+          let certificateStatus = 'pending';
 
-      try {
-        const flyCert = await flyService.getCertificate(site.customDomain.domain);
-        if (flyCert) {
-          sslStatus = flyCert.clientStatus;
-          // 'Ready' means SSL is issued and working
-          verificationStatus = flyCert.clientStatus === 'Ready' ? 'verified' : 'unverified';
-          certificateStatus = flyCert.clientStatus === 'Ready' ? 'issued' : 'pending';
-        }
-      } catch (err) {
-        console.error('Error fetching Fly certificate status:', err);
-      }
+          try {
+            const flyCert = await flyService.getCertificate(domainInfo.domain);
+            if (flyCert) {
+              sslStatus = flyCert.clientStatus;
+              verificationStatus = flyCert.clientStatus === 'Ready' ? 'verified' : 'unverified';
+              certificateStatus = flyCert.clientStatus === 'Ready' ? 'issued' : 'pending';
+            }
+          } catch (err) {
+            console.error(`Error fetching Fly certificate for ${domainInfo.domain}:`, err);
+          }
 
-      const flyIpv4 = '66.241.125.120'; // Fly.io IPv4 address for apex domains
-      const flyIpv6 = '2a09:8280:1::bd:b552:0'; // Fly.io IPv6 address for apex domains
+          return {
+            domain: domainInfo.domain,
+            status: domainInfo.status,
+            verificationStatus,
+            certificateStatus,
+            sslStatus,
+            addedAt: domainInfo.addedAt.toDate().toISOString(),
+            verifiedAt: domainInfo.verifiedAt?.toDate().toISOString(),
+            activatedAt: domainInfo.activatedAt?.toDate().toISOString(),
+            errorMessage: domainInfo.errorMessage,
+          };
+        })
+      );
 
       return res.json({
-        customDomain: {
-          domain: site.customDomain.domain,
-          status: site.customDomain.status,
-          verificationStatus,
-          certificateStatus,
-          sslStatus,
-          addedAt: site.customDomain.addedAt.toDate().toISOString(),
-          verifiedAt: site.customDomain.verifiedAt?.toDate().toISOString(),
-          activatedAt: site.customDomain.activatedAt?.toDate().toISOString(),
-          errorMessage: site.customDomain.errorMessage,
-        },
+        customDomains: domainsWithStatus,
         dnsInstructions: {
           records: [
             {
@@ -630,7 +632,7 @@ router.get(
   }
 );
 
-// Verify/refresh custom domain status from Cloudflare
+// Verify/refresh custom domain status
 router.post(
   '/:siteId/domains/verify',
   authMiddleware,
@@ -638,8 +640,9 @@ router.post(
     console.log('=== VERIFY DOMAIN ENDPOINT CALLED ===');
     try {
       const { siteId } = req.params;
+      const { domain } = req.body; // Accept specific domain from body
       const userId = req.user!.uid;
-      console.log(`Verifying domain for site: ${siteId}, user: ${userId}`);
+      console.log(`Verifying domain for site: ${siteId}, domain: ${domain}, user: ${userId}`);
 
       // Verify site ownership
       const site = await sitesService.getSiteBySiteId(siteId);
@@ -650,24 +653,31 @@ router.post(
         return res.status(403).json({ error: 'Access denied' });
       }
 
-      if (!site.customDomain) {
+      // Get all custom domains
+      const customDomains = site.customDomains || (site.customDomain ? [site.customDomain] : []);
+      if (customDomains.length === 0) {
         return res.status(400).json({ error: 'No custom domain configured' });
       }
 
-      const domainToVerify = site.customDomain.domain;
+      // Find the specific domain to verify (or use first one for backwards compatibility)
+      const domainToVerify = domain || customDomains[0].domain;
+      const domainInfo = customDomains.find(d => d.domain === domainToVerify);
+      if (!domainInfo) {
+        return res.status(404).json({ error: 'Domain not found on this site' });
+      }
 
       // ============================================
-      // STEP 1: Check if domain is assigned in master_sites
+      // STEP 1: Check if domain is in site_custom_domains table
       // ============================================
-      const masterSite = await masterDbService.getMasterSiteBySiteId(siteId);
-      const step1Passed = masterSite?.custom_domain === domainToVerify;
+      const masterDomains = await masterDbService.getMasterSiteCustomDomains(siteId);
+      const step1Passed = masterDomains.some(d => d.domain === domainToVerify);
 
-      console.log(`Step 1 - Domain assigned in master_sites: ${step1Passed}`);
-      console.log(`  Expected: ${domainToVerify}, Found: ${masterSite?.custom_domain}`);
+      console.log(`Step 1 - Domain in site_custom_domains: ${step1Passed}`);
 
       if (!step1Passed) {
         return res.json({
           verified: false,
+          domain: domainToVerify,
           steps: {
             domainAssigned: false,
             dnsConfigured: false,
@@ -687,8 +697,6 @@ router.post(
         if (flyCert) {
           sslStatus = flyCert.clientStatus;
           console.log(`Fly SSL status: ${sslStatus}`);
-
-          // Domain is verified if Fly status is 'Ready'
           step2Passed = flyCert.clientStatus === 'Ready';
         } else {
           console.log('No Fly certificate found, domain may not have been added');
@@ -697,23 +705,25 @@ router.post(
         console.error('Error checking Fly status:', err);
       }
 
-      // If both steps pass, update status
+      // If both steps pass, update status and auto-activate
       if (step1Passed && step2Passed) {
-        console.log('Both steps passed! Updating status to verified...');
-        await sitesService.updateCustomDomainStatus(site.id, 'verified');
-        await masterDbService.markCustomDomainVerified(siteId);
+        console.log('Both steps passed! Updating status to active...');
+        await sitesService.updateCustomDomainStatus(site.id, domainToVerify, 'active');
+        await masterDbService.markCustomDomainVerified(siteId, domainToVerify);
+        await masterDbService.activateMasterSiteCustomDomain(siteId, domainToVerify);
       }
 
       return res.json({
         verified: step1Passed && step2Passed,
+        domain: domainToVerify,
         steps: {
           domainAssigned: step1Passed,
           dnsConfigured: step2Passed,
         },
         sslStatus,
         message: step2Passed
-          ? 'Domain verified successfully. SSL certificate is active.'
-          : 'DNS not yet configured. Please add the CNAME record at your domain registrar.',
+          ? 'Domain verified and activated successfully. SSL certificate is active.'
+          : 'DNS not yet configured. Please add the DNS records at your domain registrar.',
       });
     } catch (error) {
       console.error('Verify custom domain error:', error);
@@ -729,6 +739,7 @@ router.post(
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { siteId } = req.params;
+      const { domain } = req.body; // Accept specific domain from body
       const userId = req.user!.uid;
 
       // Verify site ownership
@@ -740,18 +751,27 @@ router.post(
         return res.status(403).json({ error: 'Access denied' });
       }
 
-      if (!site.customDomain) {
+      // Get all custom domains
+      const customDomains = site.customDomains || (site.customDomain ? [site.customDomain] : []);
+      if (customDomains.length === 0) {
         return res.status(400).json({ error: 'No custom domain configured' });
+      }
+
+      // Find the specific domain to activate (or use first one for backwards compatibility)
+      const domainToActivate = domain || customDomains[0].domain;
+      const domainInfo = customDomains.find(d => d.domain === domainToActivate);
+      if (!domainInfo) {
+        return res.status(404).json({ error: 'Domain not found on this site' });
       }
 
       // Check Fly SSL status before activating
       try {
-        const flyCert = await flyService.getCertificate(site.customDomain.domain);
+        const flyCert = await flyService.getCertificate(domainToActivate);
 
         if (!flyCert || flyCert.clientStatus !== 'Ready') {
           return res.status(400).json({
             error: 'SSL certificate not ready',
-            message: 'Please wait for SSL certificate to be issued. Make sure your CNAME is configured.',
+            message: 'Please wait for SSL certificate to be issued. Make sure your DNS is configured.',
             sslStatus: flyCert?.clientStatus || 'unknown',
           });
         }
@@ -760,16 +780,16 @@ router.post(
         return res.status(500).json({ error: 'Failed to check domain status' });
       }
 
-      // Activate in master_sites for routing
-      await masterDbService.activateMasterSiteCustomDomain(siteId);
+      // Activate in site_custom_domains for routing
+      await masterDbService.activateMasterSiteCustomDomain(siteId, domainToActivate);
 
       // Update Firestore status
-      await sitesService.updateCustomDomainStatus(site.id, 'active');
+      await sitesService.updateCustomDomainStatus(site.id, domainToActivate, 'active');
 
       return res.json({
         success: true,
         message: 'Custom domain activated successfully',
-        domain: site.customDomain.domain,
+        domain: domainToActivate,
       });
     } catch (error) {
       console.error('Activate custom domain error:', error);
@@ -778,13 +798,13 @@ router.post(
   }
 );
 
-// Remove custom domain
+// Remove specific custom domain
 router.delete(
-  '/:siteId/domains',
+  '/:siteId/domains/:domain',
   authMiddleware,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const { siteId } = req.params;
+      const { siteId, domain } = req.params;
       const userId = req.user!.uid;
 
       // Verify site ownership
@@ -796,20 +816,21 @@ router.delete(
         return res.status(403).json({ error: 'Access denied' });
       }
 
-      if (!site.customDomain) {
-        return res.status(400).json({ error: 'No custom domain configured' });
+      // Get all custom domains and verify the domain exists
+      const customDomains = site.customDomains || (site.customDomain ? [site.customDomain] : []);
+      const domainInfo = customDomains.find(d => d.domain === domain);
+      if (!domainInfo) {
+        return res.status(404).json({ error: 'Domain not found on this site' });
       }
-
-      const domainToRemove = site.customDomain.domain;
 
       // Remove from Fly
       try {
-        await flyService.deleteCertificate(domainToRemove);
-        console.log(`[CustomDomain] Deleted ${domainToRemove} from Fly`);
+        await flyService.deleteCertificate(domain);
+        console.log(`[CustomDomain] Deleted ${domain} from Fly`);
 
         // Also try to delete www subdomain if it exists
-        if (!domainToRemove.startsWith('www.')) {
-          const wwwDomain = `www.${domainToRemove}`;
+        if (!domain.startsWith('www.')) {
+          const wwwDomain = `www.${domain}`;
           try {
             await flyService.deleteCertificate(wwwDomain);
             console.log(`[CustomDomain] Deleted ${wwwDomain} from Fly`);
@@ -822,15 +843,16 @@ router.delete(
         // Continue with removal even if Fly fails
       }
 
-      // Remove from master_sites
-      await masterDbService.removeMasterSiteCustomDomain(siteId);
+      // Remove from site_custom_domains table
+      await masterDbService.removeMasterSiteCustomDomain(siteId, domain);
 
       // Remove from Firestore
-      await sitesService.removeCustomDomain(site.id);
+      await sitesService.removeCustomDomain(site.id, domain);
 
       return res.json({
         success: true,
         message: 'Custom domain removed',
+        domain,
       });
     } catch (error) {
       console.error('Remove custom domain error:', error);

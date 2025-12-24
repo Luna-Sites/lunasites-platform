@@ -253,9 +253,9 @@ export const api = {
     });
   },
 
-  // Get custom domain status
-  async getCustomDomainStatus(siteId: string): Promise<{
-    customDomain: {
+  // Get custom domains status (returns array)
+  async getCustomDomains(siteId: string): Promise<{
+    customDomains: Array<{
       domain: string;
       status: 'pending' | 'verifying' | 'verified' | 'active' | 'error';
       verificationStatus: 'unverified' | 'verified';
@@ -265,7 +265,7 @@ export const api = {
       verifiedAt?: string;
       activatedAt?: string;
       errorMessage?: string;
-    } | null;
+    }>;
     dnsInstructions?: {
       records: Array<{
         type: string;
@@ -282,44 +282,42 @@ export const api = {
     return apiRequest(`/sites/${siteId}/domains`);
   },
 
-  // Verify DNS configuration (2-step verification)
-  async verifyCustomDomain(siteId: string): Promise<{
+  // Verify DNS configuration for a specific domain
+  async verifyCustomDomain(siteId: string, domain?: string): Promise<{
     verified: boolean;
+    domain: string;
     steps: {
       domainAssigned: boolean;
       dnsConfigured: boolean;
     };
+    sslStatus: string;
     message: string;
   }> {
-    console.log('api.verifyCustomDomain called with siteId:', siteId);
-    const result = await apiRequest<{
-      verified: boolean;
-      steps: { domainAssigned: boolean; dnsConfigured: boolean };
-      message: string;
-    }>(`/sites/${siteId}/domains/verify`, {
+    return apiRequest(`/sites/${siteId}/domains/verify`, {
       method: 'POST',
+      body: JSON.stringify({ domain }),
     });
-    console.log('api.verifyCustomDomain response:', result);
-    return result;
   },
 
   // Activate custom domain
-  async activateCustomDomain(siteId: string): Promise<{
+  async activateCustomDomain(siteId: string, domain?: string): Promise<{
     success: boolean;
     message: string;
     domain: string;
   }> {
     return apiRequest(`/sites/${siteId}/domains/activate`, {
       method: 'POST',
+      body: JSON.stringify({ domain }),
     });
   },
 
-  // Remove custom domain
-  async removeCustomDomain(siteId: string): Promise<{
+  // Remove specific custom domain
+  async removeCustomDomain(siteId: string, domain: string): Promise<{
     success: boolean;
     message: string;
+    domain: string;
   }> {
-    return apiRequest(`/sites/${siteId}/domains`, {
+    return apiRequest(`/sites/${siteId}/domains/${encodeURIComponent(domain)}`, {
       method: 'DELETE',
     });
   },
