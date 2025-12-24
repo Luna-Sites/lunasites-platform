@@ -6,6 +6,7 @@
 import { Router, Response } from 'express';
 import { AuthenticatedRequest, authMiddleware, adminMiddleware } from '../middleware/auth.js';
 import * as masterDbService from '../services/masterDb.js';
+import { generateScreenshotUrl } from '../utils/screenshot.js';
 
 const router = Router();
 
@@ -132,10 +133,20 @@ router.post(
         return res.status(404).json({ error: 'Site not found' });
       }
 
+      // Generate screenshot URL (ScreenshotOne handles caching)
+      let thumbnailUrl: string | undefined;
+      try {
+        thumbnailUrl = generateScreenshotUrl(siteId);
+      } catch (error) {
+        console.error('Failed to generate screenshot URL:', error);
+        // Continue without screenshot if it fails
+      }
+
       // Create template (just stores reference to source site)
       const template = await masterDbService.createTemplate({
         name,
         description,
+        thumbnailUrl,
         sourceSiteId: siteId,
         userId,
         isPublic: isPublic || false,

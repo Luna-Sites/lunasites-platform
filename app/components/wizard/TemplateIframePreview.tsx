@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
 
 interface FontSettings {
@@ -30,43 +30,42 @@ export default function TemplateIframePreview({
   const [isHovering, setIsHovering] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | undefined>(undefined);
   const scrollPosRef = useRef(0);
 
   // Build URL with color and font query params for preview
-  const buildSiteUrl = (currentColors?: string[], currentFonts?: FontSettings) => {
+  // Only rebuild URL when siteId changes, not colors/fonts
+  const siteUrl = useMemo(() => {
     const baseUrl = `https://${siteId}.luna-sites.com`;
     const params = new URLSearchParams();
 
     // Add color params
-    if (currentColors && currentColors.length > 0) {
-      if (currentColors[0]) params.set('primary', currentColors[0]);
-      if (currentColors[1]) params.set('secondary', currentColors[1]);
-      if (currentColors[2]) params.set('accent', currentColors[2]);
-      if (currentColors[3]) params.set('background', currentColors[3]);
+    if (colors && colors.length > 0) {
+      if (colors[0]) params.set('primary', colors[0]);
+      if (colors[1]) params.set('secondary', colors[1]);
+      if (colors[2]) params.set('accent', colors[2]);
+      if (colors[3]) params.set('background', colors[3]);
     }
 
     // Add font params
-    if (currentFonts) {
-      params.set('font_heading', currentFonts.headingId);
-      params.set('font_body', currentFonts.bodyId);
-      params.set('heading_weight', String(currentFonts.headingWeight));
-      params.set('body_weight', String(currentFonts.bodyWeight));
-      params.set('base_size', String(currentFonts.baseFontSize));
-      params.set('base_size_mobile', String(currentFonts.baseFontSizeMobile));
+    if (fonts) {
+      params.set('font_heading', fonts.headingId);
+      params.set('font_body', fonts.bodyId);
+      params.set('heading_weight', String(fonts.headingWeight));
+      params.set('body_weight', String(fonts.bodyWeight));
+      params.set('base_size', String(fonts.baseFontSize));
+      params.set('base_size_mobile', String(fonts.baseFontSizeMobile));
     }
 
     const queryString = params.toString();
     return queryString ? `${baseUrl}?${queryString}` : baseUrl;
-  };
+  }, [siteId, colors, fonts]);
 
-  const siteUrl = buildSiteUrl(colors, fonts);
-
+  // Only reset loading when siteId changes, not colors/fonts
   useEffect(() => {
-    // Reset state when siteId, colors, or fonts change
     setLoading(true);
     setError(false);
-  }, [siteId, colors, fonts]);
+  }, [siteId]);
 
   // Hover-based scroll animation for card mode
   useEffect(() => {
@@ -161,7 +160,7 @@ export default function TemplateIframePreview({
       )}
 
       <iframe
-        key={siteUrl}
+        key={siteId}
         ref={iframeRef}
         src={siteUrl}
         title="Template preview"
