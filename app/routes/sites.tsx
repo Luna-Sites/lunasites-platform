@@ -378,24 +378,6 @@ export default function Sites() {
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <p className="text-xs text-slate-500 mb-1 font-medium">
-                                Status
-                              </p>
-                              <p className="text-sm text-slate-900">
-                                <span
-                                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                    isPlaceholder
-                                      ? 'bg-slate-100 text-slate-400'
-                                      : site.status === 'Published'
-                                        ? 'bg-green-100 text-green-700'
-                                        : 'bg-yellow-100 text-yellow-700'
-                                  }`}
-                                >
-                                  {site.status}
-                                </span>
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-slate-500 mb-1 font-medium">
                                 Template
                               </p>
                               <p
@@ -404,9 +386,6 @@ export default function Sites() {
                                 {site.template}
                               </p>
                             </div>
-                          </div>
-
-                          <div className="grid grid-cols-2 gap-4">
                             <div>
                               <p className="text-xs text-slate-500 mb-1 font-medium">
                                 Created
