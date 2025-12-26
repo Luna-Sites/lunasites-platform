@@ -52,7 +52,9 @@ function parseXmlElements(xml: string, tag: string): string[] {
 function checkApiErrors(xml: string): void {
   const status = parseXmlAttribute(xml, 'ApiResponse', 'Status');
   if (status === 'ERROR') {
-    const errorMsg = parseXmlValue(xml, 'Message') || 'Unknown Namecheap API error';
+    // Log full response for debugging
+    console.error('[Namecheap] API Error Response:', xml.substring(0, 1000));
+    const errorMsg = parseXmlValue(xml, 'Message') || parseXmlValue(xml, 'Error') || 'Unknown Namecheap API error';
     throw new Error(errorMsg);
   }
 }
@@ -77,10 +79,17 @@ export async function checkDomainAvailability(domains: string[]): Promise<Domain
   params.set('Command', 'namecheap.domains.check');
   params.set('DomainList', domains.join(','));
 
+  const apiUrl = getApiUrl();
   console.log(`[Namecheap] Checking availability for: ${domains.join(', ')}`);
+  console.log(`[Namecheap] Using API URL: ${apiUrl}`);
+  console.log(`[Namecheap] Sandbox mode: ${config.namecheap.sandbox}`);
 
-  const response = await fetch(`${getApiUrl()}?${params.toString()}`);
+  const response = await fetch(`${apiUrl}?${params.toString()}`);
   const xml = await response.text();
+
+  // Log first part of response for debugging
+  console.log(`[Namecheap] Response status: ${response.status}`);
+  console.log(`[Namecheap] Response preview:`, xml.substring(0, 500));
 
   checkApiErrors(xml);
 
