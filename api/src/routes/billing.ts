@@ -299,6 +299,59 @@ router.post('/cancel/:siteId', authMiddleware, async (req: AuthenticatedRequest,
 });
 
 /**
+ * POST /billing/change-plan/:siteId
+ * Change subscription plan for a site
+ */
+router.post('/change-plan/:siteId', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const { siteId } = req.params;
+    const { plan } = req.body;
+    const userId = req.user!.uid;
+
+    if (!plan || !['starter', 'monthly', 'annual', 'biennial'].includes(plan)) {
+      return res.status(400).json({ error: 'Invalid plan. Must be starter, monthly, annual, or biennial' });
+    }
+
+    const db = admin.firestore();
+    const siteBillingDoc = await db
+      .collection('siteBilling')
+      .where('siteId', '==', siteId)
+      .where('userId', '==', userId)
+      .limit(1)
+      .get();
+
+    if (siteBillingDoc.empty) {
+      return res.status(404).json({ error: 'Subscription not found' });
+    }
+
+    const billingData = siteBillingDoc.docs[0].data();
+    const subscriptionId = billingData.subscriptionId;
+    if (!subscriptionId) {
+      return res.status(400).json({ error: 'No active subscription to change' });
+    }
+
+    // Update subscription in Stripe
+    await stripeService.updateSubscriptionPlan(subscriptionId, plan);
+
+    // Determine new plan type for Firestore
+    const newPlanType = plan === 'starter' ? 'starter' : 'pro';
+
+    // Update Firestore
+    await siteBillingDoc.docs[0].ref.update({
+      plan: newPlanType,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    console.log(`[Billing] Subscription plan changed for site ${siteId} to ${plan} (${newPlanType})`);
+
+    return res.json({ success: true, message: 'Subscription plan changed', plan: newPlanType });
+  } catch (error) {
+    console.error('Change subscription plan error:', error);
+    return res.status(500).json({ error: 'Failed to change subscription plan' });
+  }
+});
+
+/**
  * GET /billing/subscriptions
  * Get all subscriptions for the current user
  */

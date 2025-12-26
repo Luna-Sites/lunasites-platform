@@ -538,7 +538,7 @@ export const api = {
     subscriptions: Array<{
       id: string;
       siteId: string;
-      plan: 'free' | 'starter' | 'pro' | 'enterprise';
+      plan: 'free' | 'starter' | 'pro';
       status: 'active' | 'cancelled' | 'past_due' | 'trialing';
       subscriptionId?: string;
       currentPeriodStart?: string;
@@ -553,6 +553,17 @@ export const api = {
   async cancelSubscription(siteId: string): Promise<{ success: boolean; message: string }> {
     return apiRequest(`/billing/cancel/${siteId}`, {
       method: 'POST',
+    });
+  },
+
+  // Change subscription plan for a site
+  async changeSubscriptionPlan(
+    siteId: string,
+    plan: 'starter' | 'monthly' | 'annual' | 'biennial'
+  ): Promise<{ success: boolean; message: string; plan: string }> {
+    return apiRequest(`/billing/change-plan/${siteId}`, {
+      method: 'POST',
+      body: JSON.stringify({ plan }),
     });
   },
 

@@ -6,7 +6,7 @@ import { auth } from '../lib/firebase';
 import { api } from '../lib/api';
 
 interface SiteBilling {
-  plan: 'free' | 'starter' | 'pro' | 'enterprise';
+  plan: 'free' | 'starter' | 'pro';
   status: 'active' | 'trialing' | 'past_due' | 'cancelled';
   trialEndsAt?: string;
   currentPeriodEnd?: string;
@@ -141,7 +141,6 @@ export default function EditSite() {
       free: 'Free Trial',
       starter: 'Starter',
       pro: 'Pro',
-      enterprise: 'Pro 2Y',
     };
 
     // Calculate days left - for trial, use site.createdAt + 29 days
@@ -198,8 +197,8 @@ export default function EditSite() {
     };
   };
 
-  // Check if custom domain is available
-  const canUseCustomDomain = billing && ['pro', 'enterprise', 'monthly', 'annual', 'biennial'].includes(billing.plan);
+  // Check if custom domain is available (only 'pro' plan has custom domain)
+  const canUseCustomDomain = billing && billing.plan === 'pro';
 
   const subscriptionInfo = getSubscriptionInfo();
 

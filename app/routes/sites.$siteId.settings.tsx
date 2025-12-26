@@ -9,7 +9,7 @@ import { signOut } from 'firebase/auth';
 import DomainSearch from '../components/DomainSearch';
 
 interface SiteBilling {
-  plan: 'free' | 'starter' | 'pro' | 'enterprise';
+  plan: 'free' | 'starter' | 'pro';
   status: 'active' | 'trialing' | 'past_due' | 'cancelled';
   currentPeriodEnd?: string;
 }
@@ -139,6 +139,9 @@ export default function SiteSettings() {
   const [purchaseLoading, setPurchaseLoading] = useState(false);
   const [billing, setBilling] = useState<SiteBilling | null>(null);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [showChangePlan, setShowChangePlan] = useState(false);
   const [contactForm, setContactForm] = useState({
     firstName: '',
     lastName: '',
@@ -234,8 +237,9 @@ export default function SiteSettings() {
     loadData();
   }, [siteId]);
 
-  // Check if plan allows custom domains
-  const canUseCustomDomain = billing && ['pro', 'enterprise'].includes(billing.plan);
+  // Check if plan allows custom domains (only pro plan)
+  const canUseCustomDomain = billing && billing.plan === 'pro';
+  console.log('[Settings] canUseCustomDomain:', canUseCustomDomain, 'billing.plan:', billing?.plan);
 
   // Handle upgrade to Pro
   const handleUpgrade = async (plan: 'monthly' | 'annual' | 'biennial') => {
@@ -256,6 +260,42 @@ export default function SiteSettings() {
     } catch (err) {
       console.error('Upgrade error:', err);
       setError('Failed to start upgrade process');
+    } finally {
+      setUpgradeLoading(false);
+    }
+  };
+
+  // Handle cancel subscription
+  const handleCancelSubscription = async () => {
+    if (!siteId) return;
+    setCancelLoading(true);
+    try {
+      await api.cancelSubscription(siteId);
+      setSuccess('Your subscription has been cancelled. You will retain access until the end of your billing period.');
+      setShowCancelConfirm(false);
+      // Reload billing to reflect cancelled status
+      await reloadBilling();
+    } catch (err) {
+      console.error('Cancel subscription error:', err);
+      setError('Failed to cancel subscription. Please try again.');
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
+  // Handle change plan for existing subscribers
+  const handleChangePlan = async (plan: 'starter' | 'monthly' | 'annual' | 'biennial') => {
+    if (!siteId) return;
+    setUpgradeLoading(true);
+    try {
+      const result = await api.changeSubscriptionPlan(siteId, plan);
+      setSuccess(`Your plan has been changed to ${result.plan === 'pro' ? 'Pro' : 'Starter'}. Changes may take a moment to reflect.`);
+      setShowChangePlan(false);
+      // Reload billing to reflect new plan
+      await reloadBilling();
+    } catch (err) {
+      console.error('Change plan error:', err);
+      setError('Failed to change plan. Please try again.');
     } finally {
       setUpgradeLoading(false);
     }
@@ -594,7 +634,6 @@ export default function SiteSettings() {
                             {billing.plan === 'free' && 'Free Trial'}
                             {billing.plan === 'starter' && 'Starter Plan'}
                             {billing.plan === 'pro' && 'Pro Plan'}
-                            {billing.plan === 'enterprise' && 'Pro 2 Years'}
                           </p>
                           <p className="text-sm text-slate-600 mt-1">
                             {billing.status === 'trialing' && (
@@ -684,6 +723,108 @@ export default function SiteSettings() {
                           >
                             Or continue with <strong>Starter at €4.99/mo</strong> (no custom domain)
                           </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Manage Subscription - for active paid users */}
+                    {(billing.plan === 'starter' || billing.plan === 'pro') && billing.status === 'active' && (
+                      <div className="mt-6 pt-6 border-t border-slate-200">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium text-slate-700">Manage Subscription</p>
+                            <p className="text-xs text-slate-500 mt-1">Change your plan or cancel your subscription</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setShowChangePlan(!showChangePlan)}
+                              className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                            >
+                              Change Plan
+                            </button>
+                            <button
+                              onClick={() => setShowCancelConfirm(true)}
+                              className="px-3 py-1.5 text-sm text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Change Plan Options */}
+                        {showChangePlan && (
+                          <div className="mt-4 p-4 bg-slate-50 rounded-lg">
+                            <p className="text-sm font-medium text-slate-700 mb-3">Switch to a different plan:</p>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              {billing.plan !== 'starter' && (
+                                <button
+                                  onClick={() => handleChangePlan('starter')}
+                                  disabled={upgradeLoading}
+                                  className="p-3 border border-slate-200 rounded-lg hover:border-slate-400 bg-white transition-all text-left"
+                                >
+                                  <p className="font-semibold text-slate-900 text-sm">Starter</p>
+                                  <p className="text-base font-bold text-slate-700">€4.99<span className="text-xs font-normal text-slate-500">/mo</span></p>
+                                  <p className="text-xs text-slate-500">No custom domain</p>
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleChangePlan('monthly')}
+                                disabled={upgradeLoading}
+                                className="p-3 border border-slate-200 rounded-lg hover:border-[#5A318F] bg-white transition-all text-left"
+                              >
+                                <p className="font-semibold text-slate-900 text-sm">Pro Monthly</p>
+                                <p className="text-base font-bold text-[#5A318F]">€13<span className="text-xs font-normal text-slate-500">/mo</span></p>
+                                <p className="text-xs text-slate-500">Custom domain</p>
+                              </button>
+                              <button
+                                onClick={() => handleChangePlan('annual')}
+                                disabled={upgradeLoading}
+                                className="p-3 border border-[#5A318F] rounded-lg hover:bg-purple-50 bg-white transition-all text-left"
+                              >
+                                <p className="font-semibold text-slate-900 text-sm">Pro Annual</p>
+                                <p className="text-base font-bold text-[#5A318F]">€9.99<span className="text-xs font-normal text-slate-500">/mo</span></p>
+                                <p className="text-xs text-slate-500">Save 23%</p>
+                              </button>
+                              <button
+                                onClick={() => handleChangePlan('biennial')}
+                                disabled={upgradeLoading}
+                                className="p-3 border border-slate-200 rounded-lg hover:border-green-500 bg-white transition-all text-left"
+                              >
+                                <p className="font-semibold text-slate-900 text-sm">Pro 2 Years</p>
+                                <p className="text-base font-bold text-[#5A318F]">€6.99<span className="text-xs font-normal text-slate-500">/mo</span></p>
+                                <p className="text-xs text-green-600">Best value</p>
+                              </button>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-3">
+                              Changes will be prorated and applied immediately.
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Cancel Confirmation */}
+                        {showCancelConfirm && (
+                          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                            <p className="font-medium text-red-800 mb-2">Are you sure you want to cancel?</p>
+                            <p className="text-sm text-red-700 mb-4">
+                              Your subscription will remain active until {billing.currentPeriodEnd ? new Date(billing.currentPeriodEnd).toLocaleDateString() : 'the end of your billing period'}.
+                              After that, your site will be downgraded to the free plan.
+                            </p>
+                            <div className="flex gap-2">
+                              <button
+                                onClick={handleCancelSubscription}
+                                disabled={cancelLoading}
+                                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 text-sm"
+                              >
+                                {cancelLoading ? 'Cancelling...' : 'Yes, Cancel Subscription'}
+                              </button>
+                              <button
+                                onClick={() => setShowCancelConfirm(false)}
+                                className="px-4 py-2 border border-slate-300 rounded-lg hover:bg-white transition-colors text-sm"
+                              >
+                                Keep Subscription
+                              </button>
+                            </div>
+                          </div>
                         )}
                       </div>
                     )}

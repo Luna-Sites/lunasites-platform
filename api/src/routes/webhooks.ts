@@ -448,15 +448,16 @@ async function handleSubscriptionUpdated(
 
 /**
  * Map Stripe price ID to plan name
+ * Plans: free (trial), starter (no custom domain), pro (with custom domain)
  */
-function getPlanFromPriceId(priceId: string): 'free' | 'starter' | 'pro' | 'enterprise' {
+function getPlanFromPriceId(priceId: string): 'free' | 'starter' | 'pro' {
   const { prices } = config.stripe;
 
   console.log(`[Webhook] getPlanFromPriceId called with priceId: ${priceId}`);
   console.log(`[Webhook] Config prices:`, JSON.stringify(prices, null, 2));
 
   if (priceId === prices.starter) {
-    console.log(`[Webhook] Matched starter plan`);
+    console.log(`[Webhook] Matched starter plan (no custom domain)`);
     return 'starter';
   }
   if (priceId === prices.monthly) {
@@ -468,8 +469,8 @@ function getPlanFromPriceId(priceId: string): 'free' | 'starter' | 'pro' | 'ente
     return 'pro';
   }
   if (priceId === prices.biennial) {
-    console.log(`[Webhook] Matched biennial -> enterprise plan`);
-    return 'enterprise';
+    console.log(`[Webhook] Matched biennial -> pro plan`);
+    return 'pro';
   }
 
   console.log(`[Webhook] No match found, defaulting to free`);
