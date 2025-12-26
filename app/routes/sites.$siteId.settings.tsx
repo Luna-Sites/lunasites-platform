@@ -272,9 +272,26 @@ export default function SiteSettings() {
       });
 
       if (result.success) {
-        setSuccess(`Domain ${selectedDomain} purchased successfully! Order ID: ${result.orderId}`);
+        // Automatically add the purchased domain to the site
+        try {
+          await api.addCustomDomain(siteId!, selectedDomain);
+          // Refresh domains list
+          const domainsResponse = await api.getCustomDomains(siteId!);
+          const domainsWithInstructions: DomainEntry[] = domainsResponse.customDomains.map(d => ({
+            domain: d,
+            dnsInstructions: domainsResponse.dnsInstructions || null,
+          }));
+          setDomains(domainsWithInstructions);
+          setSuccess(`Domain ${selectedDomain} purchased and connected successfully!`);
+        } catch (connectErr) {
+          // Domain purchased but failed to connect - still show success
+          setSuccess(`Domain ${selectedDomain} purchased successfully! You can connect it using "Use domain bought through Luna Sites".`);
+        }
+
         setShowDomainPurchase(false);
         setSelectedDomain(null);
+        setDomainOption(null);
+        setShowAddForm(false);
         setContactForm({
           firstName: '',
           lastName: '',
