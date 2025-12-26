@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import type { Route } from './+types/sites';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,6 +19,48 @@ import { auth } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
 import { api } from '../lib/api';
 import { ASSETS } from '../data/wizard-data';
+
+// Lazy iframe that only loads when visible in viewport
+function LazyIframe({ src, title }: { src: string; title: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const element = ref.current;
+    if (!element) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect(); // Stop observing once visible
+        }
+      },
+      { rootMargin: '100px' } // Start loading 100px before entering viewport
+    );
+
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref} className="w-full h-full overflow-hidden">
+      {isVisible ? (
+        <iframe
+          src={src}
+          title={title}
+          className="w-[200%] h-[200%] origin-top-left pointer-events-none"
+          style={{ transform: 'scale(0.5)' }}
+          loading="lazy"
+        />
+      ) : (
+        <div className="w-full h-full bg-slate-100 animate-pulse flex items-center justify-center">
+          <div className="text-slate-400 text-sm">Loading preview...</div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -279,15 +321,10 @@ export default function Sites() {
                             </p>
                           </div>
                         ) : (
-                          <div className="w-full h-full overflow-hidden">
-                            <iframe
-                              src={`https://${site.url}`}
-                              title={site.title}
-                              className="w-[200%] h-[200%] origin-top-left pointer-events-none"
-                              style={{ transform: 'scale(0.5)' }}
-                              loading="lazy"
-                            />
-                          </div>
+                          <LazyIframe
+                            src={`https://${site.url}`}
+                            title={site.title}
+                          />
                         )}
                       </div>
                     </div>
