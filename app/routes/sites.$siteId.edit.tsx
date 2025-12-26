@@ -149,18 +149,36 @@ export default function EditSite() {
     if (billing.status === 'trialing' || billing.plan === 'free') {
       // Trial is 29 days from site creation
       if (site?.createdAt) {
-        const trialEndDate = new Date(site.createdAt);
-        trialEndDate.setDate(trialEndDate.getDate() + 29);
-        daysLeft = Math.ceil((trialEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+        const createdAtDate = new Date(site.createdAt);
+        // Validate the date is valid
+        if (!isNaN(createdAtDate.getTime())) {
+          const trialEndDate = new Date(createdAtDate);
+          trialEndDate.setDate(trialEndDate.getDate() + 29);
+          daysLeft = Math.ceil((trialEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+          console.log('[Trial] createdAt:', site.createdAt, 'trialEnd:', trialEndDate.toISOString(), 'daysLeft:', daysLeft);
+        } else {
+          console.warn('[Trial] Invalid createdAt date:', site.createdAt);
+          // Fallback: assume trial just started
+          daysLeft = 29;
+        }
+      } else {
+        console.warn('[Trial] No createdAt on site:', site?.siteId);
+        // Fallback: assume trial just started if no createdAt
+        daysLeft = 29;
       }
     } else if (billing.currentPeriodEnd) {
-      daysLeft = Math.ceil((new Date(billing.currentPeriodEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      const periodEnd = new Date(billing.currentPeriodEnd);
+      if (!isNaN(periodEnd.getTime())) {
+        daysLeft = Math.ceil((periodEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      }
     }
 
     if (billing.status === 'trialing' || billing.plan === 'free') {
+      // Check for valid positive days left, treating NaN as null
+      const validDaysLeft = daysLeft !== null && !isNaN(daysLeft) && daysLeft > 0;
       return {
-        label: daysLeft !== null && daysLeft > 0 ? `Trial: ${daysLeft} days left` : 'Trial expired',
-        urgent: daysLeft === null || daysLeft <= 7,
+        label: validDaysLeft ? `Trial: ${daysLeft} days left` : 'Trial expired',
+        urgent: !validDaysLeft || daysLeft! <= 7,
         icon: Clock,
       };
     }
