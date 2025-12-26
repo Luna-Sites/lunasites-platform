@@ -17,6 +17,28 @@ interface DomainSearchProps {
   showPurchaseButton?: boolean;
 }
 
+// Base prices for TLDs (approximate Namecheap prices in EUR) + €2 markup
+const TLD_PRICES: Record<string, number> = {
+  '.com': 12,
+  '.net': 14,
+  '.org': 14,
+  '.io': 35,
+  '.co': 28,
+  '.app': 16,
+  '.dev': 14,
+  '.site': 4,
+};
+
+const MARKUP = 2; // €2 service fee
+
+function getDomainPrice(domain: string, premiumPrice?: number): number {
+  if (premiumPrice && premiumPrice > 0) {
+    return premiumPrice + MARKUP;
+  }
+  const tld = '.' + domain.split('.').pop();
+  return (TLD_PRICES[tld] || 15) + MARKUP;
+}
+
 export function DomainSearch({ onSelectDomain, onPurchase, showPurchaseButton = true }: DomainSearchProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [results, setResults] = useState<DomainResult[]>([]);
@@ -142,11 +164,9 @@ export function DomainSearch({ onSelectDomain, onPurchase, showPurchaseButton = 
                     )}
                   </div>
                   <div className="flex items-center gap-3">
-                    {result.premiumPrice && (
-                      <span className="text-amber-700 font-medium">
-                        ${result.premiumPrice}/yr
-                      </span>
-                    )}
+                    <span className={`font-medium ${result.premium ? 'text-amber-700' : 'text-slate-700'}`}>
+                      €{getDomainPrice(result.domain, result.premiumPrice)}/yr
+                    </span>
                     {showPurchaseButton && (
                       <Button
                         size="sm"

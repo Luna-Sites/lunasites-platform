@@ -60,6 +60,7 @@ export default function SiteSettings() {
   const [domains, setDomains] = useState<DomainEntry[]>([]);
   const [newDomain, setNewDomain] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [domainOption, setDomainOption] = useState<'select' | 'register' | 'buy' | 'transfer' | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -452,9 +453,72 @@ export default function SiteSettings() {
                   </div>
                 </div>
 
-                {/* Add Domain Form */}
-                {showAddForm && (
+                {/* Add Domain Options */}
+                {showAddForm && !domainOption && (
+                  <div className="mb-6 p-4 bg-slate-50 rounded-lg space-y-3">
+                    <p className="text-sm font-medium text-slate-700 mb-4">How would you like to add a domain?</p>
+
+                    <button
+                      onClick={() => setDomainOption('register')}
+                      className="w-full p-4 bg-white border border-slate-200 rounded-lg hover:border-[#5A318F] hover:bg-purple-50 transition-all text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Globe className="w-5 h-5 text-[#5A318F]" />
+                        <div>
+                          <p className="font-medium text-slate-900">I already have a domain</p>
+                          <p className="text-sm text-slate-500">Connect a domain you own from another registrar</p>
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => setDomainOption('buy')}
+                      className="w-full p-4 bg-white border border-slate-200 rounded-lg hover:border-[#5A318F] hover:bg-purple-50 transition-all text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <ShoppingCart className="w-5 h-5 text-[#5A318F]" />
+                        <div>
+                          <p className="font-medium text-slate-900">Buy a new domain</p>
+                          <p className="text-sm text-slate-500">Search and purchase a domain through Luna Sites</p>
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => setDomainOption('transfer')}
+                      className="w-full p-4 bg-white border border-slate-200 rounded-lg hover:border-[#5A318F] hover:bg-purple-50 transition-all text-left"
+                    >
+                      <div className="flex items-center gap-3">
+                        <RefreshCw className="w-5 h-5 text-[#5A318F]" />
+                        <div>
+                          <p className="font-medium text-slate-900">Use domain bought through Luna Sites</p>
+                          <p className="text-sm text-slate-500">Connect a domain you purchased here</p>
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => { setShowAddForm(false); setDomainOption(null); }}
+                      className="w-full text-center text-sm text-slate-500 hover:text-slate-700 mt-2"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+
+                {/* Register Own Domain Form */}
+                {showAddForm && domainOption === 'register' && (
                   <form onSubmit={handleAddDomain} className="space-y-4 mb-6 p-4 bg-slate-50 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <button
+                        type="button"
+                        onClick={() => setDomainOption(null)}
+                        className="text-slate-400 hover:text-slate-600"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                      </button>
+                      <span className="text-sm font-medium text-slate-700">Connect your own domain</span>
+                    </div>
                     <div>
                       <label className="block text-sm font-medium text-slate-700 mb-2">
                         Domain Name
@@ -480,13 +544,85 @@ export default function SiteSettings() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => { setShowAddForm(false); setNewDomain(''); }}
+                        onClick={() => { setShowAddForm(false); setDomainOption(null); setNewDomain(''); }}
                         className="px-4 py-2.5 text-slate-600 hover:text-slate-900"
                       >
                         Cancel
                       </button>
                     </div>
                   </form>
+                )}
+
+                {/* Buy Domain Section */}
+                {showAddForm && domainOption === 'buy' && (
+                  <div className="mb-6 p-4 bg-slate-50 rounded-lg">
+                    <div className="flex items-center gap-2 mb-4">
+                      <button
+                        type="button"
+                        onClick={() => setDomainOption(null)}
+                        className="text-slate-400 hover:text-slate-600"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                      </button>
+                      <span className="text-sm font-medium text-slate-700">Buy a new domain</span>
+                    </div>
+                    <p className="text-sm text-slate-600 mb-4">
+                      Search for available domains. Prices shown include a €2 service fee.
+                    </p>
+                    <DomainSearch onPurchase={handleDomainSelect} />
+                    <button
+                      onClick={() => { setShowAddForm(false); setDomainOption(null); }}
+                      className="w-full text-center text-sm text-slate-500 hover:text-slate-700 mt-4"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+
+                {/* Transfer Domain Section */}
+                {showAddForm && domainOption === 'transfer' && (
+                  <div className="mb-6 p-4 bg-slate-50 rounded-lg">
+                    <div className="flex items-center gap-2 mb-4">
+                      <button
+                        type="button"
+                        onClick={() => setDomainOption(null)}
+                        className="text-slate-400 hover:text-slate-600"
+                      >
+                        <ArrowLeft className="w-4 h-4" />
+                      </button>
+                      <span className="text-sm font-medium text-slate-700">Connect Luna Sites domain</span>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Domain purchased through Luna Sites
+                      </label>
+                      <input
+                        type="text"
+                        value={newDomain}
+                        onChange={(e) => setNewDomain(e.target.value)}
+                        placeholder="yourdomain.com"
+                        className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#5A318F] focus:border-transparent outline-none transition-all bg-white"
+                      />
+                      <p className="text-xs text-slate-400 mt-1">
+                        Enter the domain you bought through Luna Sites
+                      </p>
+                    </div>
+                    <div className="flex gap-2 mt-4">
+                      <button
+                        onClick={handleAddDomain}
+                        disabled={!newDomain.trim() || actionLoading === 'add'}
+                        className="bg-gradient-to-r from-[#5A318F] to-[#D920B7] hover:from-[#4A2875] hover:to-[#C01AA3] text-white px-6 py-2.5 rounded-lg transition-all disabled:opacity-50"
+                      >
+                        {actionLoading === 'add' ? 'Connecting...' : 'Connect Domain'}
+                      </button>
+                      <button
+                        onClick={() => { setShowAddForm(false); setDomainOption(null); setNewDomain(''); }}
+                        className="px-4 py-2.5 text-slate-600 hover:text-slate-900"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
                 )}
 
                 {/* No domains message */}
@@ -641,17 +777,6 @@ export default function SiteSettings() {
                 )}
               </div>
 
-              {/* Buy a Domain */}
-              <div className="bg-white border border-slate-200 rounded-xl p-6">
-                <h2 className="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
-                  <ShoppingCart className="w-5 h-5" />
-                  Buy a Domain
-                </h2>
-                <p className="text-slate-600 mb-4">
-                  Search and purchase a new domain for your site.
-                </p>
-                <DomainSearch onPurchase={handleDomainSelect} />
-              </div>
             </div>
           </div>
         </div>
