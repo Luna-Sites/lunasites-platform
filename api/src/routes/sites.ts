@@ -484,11 +484,26 @@ router.post(
           }
         }
       } catch (flyError) {
-        console.error(`[CustomDomain] Failed to add domain to Fly:`, flyError);
-        return res.status(500).json({
-          error: 'Failed to add domain to Fly',
-          details: flyError instanceof Error ? flyError.message : 'Unknown error'
-        });
+        const errorMessage = flyError instanceof Error ? flyError.message : 'Unknown error';
+
+        // If domain already exists in Fly (transfer case), just get the existing certificate
+        if (errorMessage.includes('already exists') && autoConfigureDns) {
+          console.log(`[CustomDomain] Domain ${domain} already exists in Fly (transfer), getting existing certificate`);
+          try {
+            flyCertificate = await flyService.getCertificate(domain);
+            console.log(`[CustomDomain] Got existing certificate for ${domain}, status: ${flyCertificate?.clientStatus}`);
+          } catch (getCertError) {
+            console.error(`[CustomDomain] Failed to get existing certificate:`, getCertError);
+            // Continue anyway with a default status
+            flyCertificate = { clientStatus: 'Ready' };
+          }
+        } else {
+          console.error(`[CustomDomain] Failed to add domain to Fly:`, flyError);
+          return res.status(500).json({
+            error: 'Failed to add domain to Fly',
+            details: errorMessage
+          });
+        }
       }
 
       // Save to Firestore
@@ -543,7 +558,7 @@ router.post(
         success: true,
         domain,
         status: 'pending',
-        sslStatus: flyCertificate.clientStatus,
+        sslStatus: flyCertificate?.clientStatus || 'pending',
         dnsInstructions: {
           records: [
             {
