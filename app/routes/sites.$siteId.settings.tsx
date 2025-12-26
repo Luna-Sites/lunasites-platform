@@ -180,7 +180,7 @@ export default function SiteSettings() {
     }
   };
 
-  // Add custom domain
+  // Add custom domain (for external domains)
   const handleAddDomain = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!siteId || !newDomain.trim()) return;
@@ -208,6 +208,41 @@ export default function SiteSettings() {
       setSuccess('Domain added. Configure DNS records below.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add domain');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Transfer Luna Sites purchased domain (allows moving between sites)
+  const handleTransferDomain = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!siteId || !newDomain.trim()) return;
+
+    setError(null);
+    setSuccess(null);
+    setActionLoading('add');
+
+    try {
+      // Pass autoConfigureDns: true to allow transfer and auto-configure DNS
+      const result = await api.addCustomDomain(siteId, newDomain.trim(), true);
+      const newEntry: DomainEntry = {
+        domain: {
+          domain: result.domain,
+          status: result.sslStatus === 'Ready' ? 'active' : 'pending',
+          verificationStatus: result.sslStatus === 'Ready' ? 'verified' : 'unverified',
+          certificateStatus: result.sslStatus === 'Ready' ? 'issued' : 'pending',
+          sslStatus: result.sslStatus,
+          addedAt: new Date().toISOString(),
+        },
+        dnsInstructions: result.dnsInstructions
+      };
+      setDomains(prev => [...prev, newEntry]);
+      setNewDomain('');
+      setShowAddForm(false);
+      setDomainOption(null);
+      setSuccess('Domain connected successfully! DNS has been configured automatically.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to connect domain');
     } finally {
       setActionLoading(null);
     }
@@ -626,11 +661,11 @@ export default function SiteSettings() {
                     </div>
                     <div className="flex gap-2 mt-4">
                       <button
-                        onClick={handleAddDomain}
+                        onClick={handleTransferDomain}
                         disabled={!newDomain.trim() || actionLoading === 'add'}
                         className="bg-gradient-to-r from-[#5A318F] to-[#D920B7] hover:from-[#4A2875] hover:to-[#C01AA3] text-white px-6 py-2.5 rounded-lg transition-all disabled:opacity-50"
                       >
-                        {actionLoading === 'add' ? 'Connecting...' : 'Connect Domain'}
+                        {actionLoading === 'add' ? 'Transferring...' : 'Transfer Domain'}
                       </button>
                       <button
                         onClick={() => { setShowAddForm(false); setDomainOption(null); setNewDomain(''); }}

@@ -442,7 +442,18 @@ router.post(
       // Check if this specific domain is already taken by another site
       const domainTaken = await masterDbService.isCustomDomainTaken(domain, siteId);
       if (domainTaken) {
-        return res.status(409).json({ error: 'Domain is already in use by another site' });
+        // If autoConfigureDns is true (Luna Sites purchased domain), allow transfer
+        if (autoConfigureDns) {
+          console.log(`[CustomDomain] Transferring ${domain} to site ${siteId} (was on another site)`);
+          // Remove from old site first
+          const oldSite = await masterDbService.getMasterSiteByCustomDomain(domain);
+          if (oldSite) {
+            await masterDbService.removeMasterSiteCustomDomain(oldSite.site_id, domain);
+            console.log(`[CustomDomain] Removed ${domain} from old site ${oldSite.site_id}`);
+          }
+        } else {
+          return res.status(409).json({ error: 'Domain is already in use by another site' });
+        }
       }
 
       // Check if Fly is configured
