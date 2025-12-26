@@ -144,14 +144,23 @@ export default function EditSite() {
       enterprise: 'Pro 2Y',
     };
 
-    const daysLeft = billing.currentPeriodEnd
-      ? Math.ceil((new Date(billing.currentPeriodEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-      : null;
+    // Calculate days left - for trial, use site.createdAt + 29 days
+    let daysLeft: number | null = null;
+    if (billing.status === 'trialing' || billing.plan === 'free') {
+      // Trial is 29 days from site creation
+      if (site?.createdAt) {
+        const trialEndDate = new Date(site.createdAt);
+        trialEndDate.setDate(trialEndDate.getDate() + 29);
+        daysLeft = Math.ceil((trialEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      }
+    } else if (billing.currentPeriodEnd) {
+      daysLeft = Math.ceil((new Date(billing.currentPeriodEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    }
 
     if (billing.status === 'trialing' || billing.plan === 'free') {
       return {
-        label: daysLeft && daysLeft > 0 ? `Trial: ${daysLeft} days left` : 'Trial expired',
-        urgent: !daysLeft || daysLeft <= 7,
+        label: daysLeft !== null && daysLeft > 0 ? `Trial: ${daysLeft} days left` : 'Trial expired',
+        urgent: daysLeft === null || daysLeft <= 7,
         icon: Clock,
       };
     }

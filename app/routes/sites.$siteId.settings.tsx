@@ -534,9 +534,19 @@ export default function SiteSettings() {
                             {billing.status === 'trialing' && (
                               <>
                                 <Clock className="w-4 h-4 inline mr-1" />
-                                {billing.currentPeriodEnd
-                                  ? `Trial ends ${new Date(billing.currentPeriodEnd).toLocaleDateString()}`
-                                  : '29 days free trial'}
+                                {(() => {
+                                  // Calculate trial end date from site creation (29 days)
+                                  if (site?.createdAt) {
+                                    const trialEndDate = new Date(site.createdAt);
+                                    trialEndDate.setDate(trialEndDate.getDate() + 29);
+                                    const daysLeft = Math.ceil((trialEndDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                                    if (daysLeft > 0) {
+                                      return `Trial ends ${trialEndDate.toLocaleDateString()} (${daysLeft} days left)`;
+                                    }
+                                    return 'Trial expired';
+                                  }
+                                  return '29 days free trial';
+                                })()}
                               </>
                             )}
                             {billing.status === 'active' && billing.currentPeriodEnd && (
