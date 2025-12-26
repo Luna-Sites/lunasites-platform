@@ -7,6 +7,7 @@ import * as flyService from '../services/fly.js';
 import * as databaseService from '../services/database.js';
 import * as masterDbService from '../services/masterDb.js';
 import * as siteBootstrap from '../services/siteBootstrap.js';
+import * as namecheap from '../services/namecheap.js';
 import { config } from '../config/index.js';
 import { generateScreenshotUrl } from '../utils/screenshot.js';
 
@@ -416,7 +417,7 @@ router.post(
   async (req: AuthenticatedRequest, res: Response) => {
     try {
       const { siteId } = req.params;
-      const { domain } = req.body;
+      const { domain, autoConfigureDns } = req.body;
       const userId = req.user!.uid;
 
       if (!domain) {
@@ -484,7 +485,7 @@ router.post(
       await sitesService.setCustomDomain(site.id, domain);
       console.log(`[CustomDomain] Saved to Firestore`);
 
-      // Save to master_sites (but not activated yet)
+      // Save to master_sites (but not activated yet - unless autoConfigureDns)
       console.log(`[CustomDomain] Saving to master_sites for ${siteId}`);
       await masterDbService.setMasterSiteCustomDomain(siteId, domain);
       console.log(`[CustomDomain] Saved to master_sites`);
@@ -493,6 +494,38 @@ router.post(
       const cnameTarget = flyService.getCnameTarget();
       const flyIpv4 = '66.241.125.120'; // Fly.io IPv4 address for apex domains
       const flyIpv6 = '2a09:8280:1::bd:b552:0'; // Fly.io IPv6 address for apex domains
+
+      // If autoConfigureDns is true (domain purchased through Luna Sites), configure DNS automatically
+      let autoConfigured = false;
+      if (autoConfigureDns && namecheap.isConfigured()) {
+        console.log(`[CustomDomain] Auto-configuring DNS for ${domain} via Namecheap`);
+        try {
+          // Configure DNS records via Namecheap
+          const dnsRecords = [
+            { type: 'A', host: '@', value: flyIpv4, ttl: 1800 },
+            { type: 'AAAA', host: '@', value: flyIpv6, ttl: 1800 },
+            { type: 'CNAME', host: 'www', value: cnameTarget, ttl: 1800 },
+          ];
+          const dnsSuccess = await namecheap.setDnsHostRecords(domain, dnsRecords);
+
+          if (dnsSuccess) {
+            console.log(`[CustomDomain] DNS configured successfully for ${domain}`);
+
+            // Mark as verified and activated immediately (same as verify endpoint)
+            await sitesService.updateCustomDomainStatus(site.id, domain, 'active');
+            await masterDbService.markCustomDomainVerified(siteId, domain);
+            await masterDbService.activateMasterSiteCustomDomain(siteId, domain);
+            autoConfigured = true;
+            console.log(`[CustomDomain] Domain ${domain} marked as verified and activated`);
+          } else {
+            console.log(`[CustomDomain] Failed to configure DNS for ${domain}, will require manual setup`);
+          }
+        } catch (dnsError) {
+          console.error(`[CustomDomain] Error configuring DNS:`, dnsError);
+          // Continue - domain is added but will need manual DNS setup
+        }
+      }
+
       console.log(`[CustomDomain] Returning success response for ${domain}`);
 
       return res.json({

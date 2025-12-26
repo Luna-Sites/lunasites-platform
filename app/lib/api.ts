@@ -229,7 +229,7 @@ export const api = {
   // ============================================
 
   // Add custom domain to site
-  async addCustomDomain(siteId: string, domain: string): Promise<{
+  async addCustomDomain(siteId: string, domain: string, autoConfigureDns?: boolean): Promise<{
     success: boolean;
     domain: string;
     status: string;
@@ -249,7 +249,7 @@ export const api = {
   }> {
     return apiRequest(`/sites/${siteId}/domains`, {
       method: 'POST',
-      body: JSON.stringify({ domain }),
+      body: JSON.stringify({ domain, autoConfigureDns }),
     });
   },
 

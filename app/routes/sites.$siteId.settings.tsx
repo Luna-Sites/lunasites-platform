@@ -272,9 +272,9 @@ export default function SiteSettings() {
       });
 
       if (result.success) {
-        // Automatically add the purchased domain to the site
+        // Automatically add the purchased domain to the site with auto DNS configuration
         try {
-          await api.addCustomDomain(siteId!, selectedDomain);
+          await api.addCustomDomain(siteId!, selectedDomain, true);
           // Refresh domains list
           const domainsResponse = await api.getCustomDomains(siteId!);
           const domainsWithInstructions: DomainEntry[] = domainsResponse.customDomains.map(d => ({
