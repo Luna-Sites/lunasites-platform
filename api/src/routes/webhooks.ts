@@ -290,10 +290,11 @@ async function handleInvoicePaid(
   invoice: Stripe.Invoice,
   db: FirebaseFirestore.Firestore
 ): Promise<void> {
-  // Handle subscription as string or Stripe.Subscription object
-  const subscriptionId = typeof invoice.subscription === 'string'
-    ? invoice.subscription
-    : invoice.subscription?.id;
+  // Get subscription ID from invoice (access via bracket notation for compatibility)
+  const invoiceData = invoice as unknown as { subscription?: string | { id: string } | null };
+  const subscriptionId = typeof invoiceData.subscription === 'string'
+    ? invoiceData.subscription
+    : invoiceData.subscription?.id;
 
   if (!subscriptionId) return;
 
@@ -325,10 +326,11 @@ async function handleInvoicePaymentFailed(
   invoice: Stripe.Invoice,
   db: FirebaseFirestore.Firestore
 ): Promise<void> {
-  // Handle subscription as string or Stripe.Subscription object
-  const subscriptionId = typeof invoice.subscription === 'string'
-    ? invoice.subscription
-    : invoice.subscription?.id;
+  // Get subscription ID from invoice (access via bracket notation for compatibility)
+  const invoiceData = invoice as unknown as { subscription?: string | { id: string } | null };
+  const subscriptionId = typeof invoiceData.subscription === 'string'
+    ? invoiceData.subscription
+    : invoiceData.subscription?.id;
 
   if (!subscriptionId) return;
 
