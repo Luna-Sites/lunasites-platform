@@ -4,6 +4,7 @@ import admin from 'firebase-admin';
 import { config } from './config/index.js';
 import sitesRouter from './routes/sites.js';
 import templatesRouter from './routes/templates.js';
+import domainsRouter from './routes/domains.js';
 import { initTemplatesTable, initMasterSitesTable, initCustomDomainsTable } from './services/masterDb.js';
 import { authMiddleware, AuthenticatedRequest } from './middleware/auth.js';
 
@@ -50,6 +51,7 @@ app.get('/me', authMiddleware, async (req: AuthenticatedRequest, res: express.Re
 // Routes
 app.use('/sites', sitesRouter);
 app.use('/templates', templatesRouter);
+app.use('/domains', domainsRouter);
 
 // Error handler
 app.use(

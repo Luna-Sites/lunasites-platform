@@ -3,9 +3,10 @@ import { useParams, useNavigate } from 'react-router';
 import type { Route } from "./+types/sites.$siteId.settings";
 import { useAuth } from "../contexts/AuthContext";
 import { api, type Site } from '../lib/api';
-import { Settings, LogOut, HelpCircle, Layout, ArrowLeft, Globe, CheckCircle, XCircle, Clock, Copy, ExternalLink, Trash2, RefreshCw, Shield, Plus } from 'lucide-react';
+import { Settings, LogOut, HelpCircle, Layout, ArrowLeft, Globe, CheckCircle, XCircle, Clock, Copy, ExternalLink, Trash2, RefreshCw, Shield, Plus, ShoppingCart, X } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
+import DomainSearch from '../components/DomainSearch';
 
 const Logo = '/logo/logo_lunasites_gradient.png';
 
@@ -63,6 +64,20 @@ export default function SiteSettings() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [showDomainPurchase, setShowDomainPurchase] = useState(false);
+  const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
+  const [purchaseLoading, setPurchaseLoading] = useState(false);
+  const [contactForm, setContactForm] = useState({
+    firstName: '',
+    lastName: '',
+    email: user?.email || '',
+    phone: '',
+    address1: '',
+    city: '',
+    stateProvince: '',
+    postalCode: '',
+    country: 'US',
+  });
 
   const handleLogout = async () => {
     try {
@@ -223,6 +238,59 @@ export default function SiteSettings() {
     navigator.clipboard.writeText(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  // Handle domain selection from search
+  const handleDomainSelect = (domain: string) => {
+    setSelectedDomain(domain);
+    setShowDomainPurchase(true);
+  };
+
+  // Handle domain purchase
+  const handlePurchaseDomain = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedDomain) return;
+
+    // Validate contact form
+    const requiredFields = ['firstName', 'lastName', 'email', 'phone', 'address1', 'city', 'stateProvince', 'postalCode', 'country'];
+    for (const field of requiredFields) {
+      if (!contactForm[field as keyof typeof contactForm]) {
+        setError(`Please fill in ${field.replace(/([A-Z])/g, ' $1').toLowerCase()}`);
+        return;
+      }
+    }
+
+    setError(null);
+    setPurchaseLoading(true);
+
+    try {
+      const result = await api.purchaseDomain({
+        domain: selectedDomain,
+        years: 1,
+        contact: contactForm,
+      });
+
+      if (result.success) {
+        setSuccess(`Domain ${selectedDomain} purchased successfully! Order ID: ${result.orderId}`);
+        setShowDomainPurchase(false);
+        setSelectedDomain(null);
+        setContactForm({
+          firstName: '',
+          lastName: '',
+          email: user?.email || '',
+          phone: '',
+          address1: '',
+          city: '',
+          stateProvince: '',
+          postalCode: '',
+          country: 'US',
+        });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to purchase domain');
+    } finally {
+      setPurchaseLoading(false);
+    }
   };
 
   if (!user) {
@@ -572,10 +640,181 @@ export default function SiteSettings() {
                   </div>
                 )}
               </div>
+
+              {/* Buy a Domain */}
+              <div className="bg-white border border-slate-200 rounded-xl p-6">
+                <h2 className="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
+                  <ShoppingCart className="w-5 h-5" />
+                  Buy a Domain
+                </h2>
+                <p className="text-slate-600 mb-4">
+                  Search and purchase a new domain for your site.
+                </p>
+                <DomainSearch onPurchase={handleDomainSelect} />
+              </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Domain Purchase Modal */}
+      {showDomainPurchase && selectedDomain && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">Purchase Domain</h3>
+                <p className="text-sm text-slate-600">{selectedDomain}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowDomainPurchase(false);
+                  setSelectedDomain(null);
+                }}
+                className="text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handlePurchaseDomain} className="p-6 space-y-4">
+              <p className="text-sm text-slate-600 mb-4">
+                Please provide contact information for domain registration (WHOIS).
+              </p>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">First Name *</label>
+                  <input
+                    type="text"
+                    value={contactForm.firstName}
+                    onChange={(e) => setContactForm(prev => ({ ...prev, firstName: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#5A318F] focus:border-transparent outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Last Name *</label>
+                  <input
+                    type="text"
+                    value={contactForm.lastName}
+                    onChange={(e) => setContactForm(prev => ({ ...prev, lastName: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#5A318F] focus:border-transparent outline-none"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Email *</label>
+                <input
+                  type="email"
+                  value={contactForm.email}
+                  onChange={(e) => setContactForm(prev => ({ ...prev, email: e.target.value }))}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#5A318F] focus:border-transparent outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Phone *</label>
+                <input
+                  type="tel"
+                  value={contactForm.phone}
+                  onChange={(e) => setContactForm(prev => ({ ...prev, phone: e.target.value }))}
+                  placeholder="+1.2125551234"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#5A318F] focus:border-transparent outline-none"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Address *</label>
+                <input
+                  type="text"
+                  value={contactForm.address1}
+                  onChange={(e) => setContactForm(prev => ({ ...prev, address1: e.target.value }))}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#5A318F] focus:border-transparent outline-none"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">City *</label>
+                  <input
+                    type="text"
+                    value={contactForm.city}
+                    onChange={(e) => setContactForm(prev => ({ ...prev, city: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#5A318F] focus:border-transparent outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">State/Province *</label>
+                  <input
+                    type="text"
+                    value={contactForm.stateProvince}
+                    onChange={(e) => setContactForm(prev => ({ ...prev, stateProvince: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#5A318F] focus:border-transparent outline-none"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Postal Code *</label>
+                  <input
+                    type="text"
+                    value={contactForm.postalCode}
+                    onChange={(e) => setContactForm(prev => ({ ...prev, postalCode: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#5A318F] focus:border-transparent outline-none"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Country *</label>
+                  <select
+                    value={contactForm.country}
+                    onChange={(e) => setContactForm(prev => ({ ...prev, country: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#5A318F] focus:border-transparent outline-none"
+                    required
+                  >
+                    <option value="US">United States</option>
+                    <option value="CA">Canada</option>
+                    <option value="GB">United Kingdom</option>
+                    <option value="DE">Germany</option>
+                    <option value="FR">France</option>
+                    <option value="RO">Romania</option>
+                    <option value="AU">Australia</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="submit"
+                  disabled={purchaseLoading}
+                  className="flex-1 bg-gradient-to-r from-[#5A318F] to-[#D920B7] hover:from-[#4A2875] hover:to-[#C01AA3] text-white py-3 rounded-lg font-medium transition-all disabled:opacity-50"
+                >
+                  {purchaseLoading ? 'Processing...' : `Purchase ${selectedDomain}`}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDomainPurchase(false);
+                    setSelectedDomain(null);
+                  }}
+                  className="px-6 py-3 text-slate-600 hover:text-slate-900"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Right Column - Nebula Background */}
       <div

@@ -321,6 +321,127 @@ export const api = {
       method: 'DELETE',
     });
   },
+
+  // ============================================
+  // DOMAIN REGISTRATION (Namecheap)
+  // ============================================
+
+  // Check domain availability (no auth required)
+  async checkDomainAvailability(domain: string): Promise<{
+    domain: string;
+    available: boolean;
+    premium: boolean;
+    premiumPrice?: number;
+  }> {
+    const response = await fetch(`${API_BASE_URL}/domains/check?domain=${encodeURIComponent(domain)}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to check domain');
+    }
+    return response.json();
+  },
+
+  // Check multiple domains at once (no auth required)
+  async checkDomainsAvailability(domains: string[]): Promise<{
+    domains: Array<{
+      domain: string;
+      available: boolean;
+      premium: boolean;
+      premiumPrice?: number;
+    }>;
+  }> {
+    const response = await fetch(`${API_BASE_URL}/domains/check-bulk?domains=${encodeURIComponent(domains.join(','))}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to check domains');
+    }
+    return response.json();
+  },
+
+  // Get domain suggestions based on keyword (no auth required)
+  async getDomainSuggestions(keyword: string): Promise<{
+    suggestions: Array<{
+      domain: string;
+      available: boolean;
+    }>;
+  }> {
+    const response = await fetch(`${API_BASE_URL}/domains/suggest?keyword=${encodeURIComponent(keyword)}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to get suggestions');
+    }
+    return response.json();
+  },
+
+  // Get TLD pricing (no auth required)
+  async getDomainPricing(): Promise<{
+    tlds: Array<{
+      tld: string;
+      registerPrice: number;
+      renewPrice: number;
+      transferPrice: number;
+      currency: string;
+    }>;
+  }> {
+    const response = await fetch(`${API_BASE_URL}/domains/pricing`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to get pricing');
+    }
+    return response.json();
+  },
+
+  // Purchase a domain (requires auth)
+  async purchaseDomain(data: {
+    domain: string;
+    years: number;
+    contact: {
+      firstName: string;
+      lastName: string;
+      address1: string;
+      city: string;
+      stateProvince: string;
+      postalCode: string;
+      country: string;
+      phone: string;
+      email: string;
+      organization?: string;
+    };
+  }): Promise<{
+    success: boolean;
+    domain: string;
+    orderId?: string;
+    transactionId?: string;
+    chargedAmount?: number;
+  }> {
+    return apiRequest('/domains/purchase', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Configure DNS for a domain (requires auth)
+  async configureDomainDns(domain: string, records: Array<{
+    type: string;
+    host: string;
+    value: string;
+    ttl?: number;
+  }>): Promise<{ success: boolean; domain: string }> {
+    return apiRequest(`/domains/${encodeURIComponent(domain)}/dns`, {
+      method: 'POST',
+      body: JSON.stringify({ records }),
+    });
+  },
+
+  // Get domain service status (requires auth)
+  async getDomainServiceStatus(): Promise<{
+    configured: boolean;
+    balance?: number;
+    currency?: string;
+    message?: string;
+  }> {
+    return apiRequest('/domains/status');
+  },
 };
 
 // Error handling helper

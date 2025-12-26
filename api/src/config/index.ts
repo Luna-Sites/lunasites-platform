@@ -55,4 +55,13 @@ export const config = {
   screenshotone: {
     accessKey: process.env.SCREENSHOTONE_ACCESS_KEY || '',
   },
+
+  // Namecheap API for domain registration
+  namecheap: {
+    apiUser: process.env.NAMECHEAP_API_USER || '',
+    apiKey: process.env.NAMECHEAP_API_KEY || '',
+    username: process.env.NAMECHEAP_USERNAME || '',
+    clientIp: process.env.NAMECHEAP_CLIENT_IP || '',
+    sandbox: process.env.NAMECHEAP_SANDBOX === 'true',
+  },
 };
