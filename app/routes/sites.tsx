@@ -96,25 +96,44 @@ export default function Sites() {
     try {
       const sites = await api.getUserSites();
       if (sites && sites.length > 0) {
-        setWebsites(
-          sites.map((site: any, index: number) => ({
-            id: site.id || index + 1,
-            siteId: site.siteId,
-            title: site.name || 'Untitled Website',
-            url: site.domain || `${site.siteId}.luna-sites.com`,
-            thumbnail: site.screenshotUrl || null,
-            createdDate: new Date(site.createdAt).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            }),
-            lastEdited: 'Recently',
-            expiryDate: 'Dec 26, 2025',
-            status: site.status === 'active' ? 'Published' : 'Draft',
-            views: '0',
-            template: 'Custom',
-          })),
+        // Fetch custom domains for each site in parallel
+        const sitesWithDomains = await Promise.all(
+          sites.map(async (site: any, index: number) => {
+            let customDomains: string[] = [];
+            try {
+              const domainData = await api.getCustomDomains(site.siteId);
+              if (domainData.customDomains && domainData.customDomains.length > 0) {
+                customDomains = domainData.customDomains
+                  .filter((d: any) => d.status === 'active' || d.status === 'verified')
+                  .map((d: any) => d.domain);
+              }
+            } catch (err) {
+              // Silently fail - custom domains are optional
+            }
+
+            const primaryDomain = site.domain || `${site.siteId}.luna-sites.com`;
+
+            return {
+              id: site.id || index + 1,
+              siteId: site.siteId,
+              title: site.name || 'Untitled Website',
+              url: primaryDomain,
+              customDomains: customDomains.filter((d: string) => d !== primaryDomain),
+              thumbnail: site.screenshotUrl || null,
+              createdDate: new Date(site.createdAt).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              }),
+              lastEdited: 'Recently',
+              expiryDate: 'Dec 26, 2025',
+              status: site.status === 'active' ? 'Published' : 'Draft',
+              views: '0',
+              template: 'Custom',
+            };
+          })
         );
+        setWebsites(sitesWithDomains);
       }
     } catch (error) {
       console.error('Error loading sites:', error);
@@ -340,15 +359,33 @@ export default function Sites() {
                               {site.title}
                             </h3>
                             {!isPlaceholder ? (
-                              <a
-                                href={`https://${site.url}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-sm text-purple-600 hover:text-purple-700 flex items-center gap-1"
-                              >
-                                {site.url}
-                                <ExternalLink className="w-3 h-3" />
-                              </a>
+                              <div className="space-y-1">
+                                <a
+                                  href={`https://${site.url}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm text-purple-600 hover:text-purple-700 flex items-center gap-1"
+                                >
+                                  {site.url}
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                                {site.customDomains && site.customDomains.length > 0 && (
+                                  <div className="space-y-0.5">
+                                    {site.customDomains.map((domain: string) => (
+                                      <a
+                                        key={domain}
+                                        href={`https://${domain}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-sm text-slate-500 hover:text-slate-700 flex items-center gap-1"
+                                      >
+                                        {domain}
+                                        <ExternalLink className="w-3 h-3" />
+                                      </a>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             ) : (
                               <span className="text-sm text-slate-400">
                                 {site.url}
