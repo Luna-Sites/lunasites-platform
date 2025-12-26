@@ -847,10 +847,11 @@ export default function SiteSettings() {
                   type="tel"
                   value={contactForm.phone}
                   onChange={(e) => setContactForm(prev => ({ ...prev, phone: e.target.value }))}
-                  placeholder="+1.2125551234"
+                  placeholder="+40747123456"
                   className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#5A318F] focus:border-transparent outline-none"
                   required
                 />
+                <p className="text-xs text-slate-400 mt-1">Include country code (e.g., +40 for Romania)</p>
               </div>
 
               <div>

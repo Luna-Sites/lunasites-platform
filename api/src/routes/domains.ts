@@ -10,6 +10,53 @@ import * as namecheap from '../services/namecheap.js';
 const router = Router();
 
 /**
+ * Format phone number to Namecheap's required format: +CountryCode.PhoneNumber
+ * Examples:
+ *   +40747934436 -> +40.747934436
+ *   +1234567890 -> +1.234567890
+ *   40747934436 -> +40.747934436
+ */
+function formatPhoneForNamecheap(phone: string): string {
+  // Remove all non-digit characters except +
+  let cleaned = phone.replace(/[^\d+]/g, '');
+
+  // Ensure it starts with +
+  if (!cleaned.startsWith('+')) {
+    cleaned = '+' + cleaned;
+  }
+
+  // If already has a dot after country code, return as-is
+  if (/^\+\d{1,3}\.\d+$/.test(phone)) {
+    return phone;
+  }
+
+  // Common country code lengths: 1 (US), 2 (most), 3 (some)
+  // We'll detect based on known patterns
+  const withoutPlus = cleaned.substring(1);
+
+  // Country code detection
+  let countryCodeLength = 2; // default
+
+  // 1-digit: US/Canada (+1)
+  if (withoutPlus.startsWith('1') && withoutPlus.length === 11) {
+    countryCodeLength = 1;
+  }
+  // 3-digit codes (e.g., +351 Portugal, +353 Ireland, +372 Estonia)
+  else if (/^(35[0-9]|37[0-9]|38[0-9]|42[0-9]|50[0-9]|59[0-9]|67[0-9]|68[0-9]|85[0-9]|88[0-9]|96[0-9]|97[0-9]|99[0-9])/.test(withoutPlus)) {
+    countryCodeLength = 3;
+  }
+  // 2-digit codes (most common: +40 Romania, +44 UK, +49 Germany, etc.)
+  else {
+    countryCodeLength = 2;
+  }
+
+  const countryCode = withoutPlus.substring(0, countryCodeLength);
+  const phoneNumber = withoutPlus.substring(countryCodeLength);
+
+  return `+${countryCode}.${phoneNumber}`;
+}
+
+/**
  * GET /domains/check?domain=example.com
  * Check if a domain is available for registration
  */
@@ -220,8 +267,16 @@ router.post(
         });
       }
 
+      // Format phone number for Namecheap
+      const formattedContact = {
+        ...contact,
+        phone: formatPhoneForNamecheap(contact.phone),
+      };
+
+      console.log(`[Domains] Formatted phone: ${contact.phone} -> ${formattedContact.phone}`);
+
       // Register the domain
-      const result = await namecheap.registerDomain(domain, years, contact);
+      const result = await namecheap.registerDomain(domain, years, formattedContact);
 
       if (!result.registered) {
         return res.status(400).json({
