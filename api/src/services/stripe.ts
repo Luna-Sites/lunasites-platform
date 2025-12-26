@@ -14,9 +14,7 @@ function getStripe(): Stripe {
     if (!config.stripe.secretKey) {
       throw new Error('Stripe secret key not configured');
     }
-    stripeInstance = new Stripe(config.stripe.secretKey, {
-      apiVersion: '2025-04-30.basil',
-    });
+    stripeInstance = new Stripe(config.stripe.secretKey);
   }
   return stripeInstance;
 }
@@ -255,48 +253,12 @@ export async function createDomainCheckout(params: {
 
 /**
  * Report storage usage for a site (called periodically)
+ * TODO: Implement when Stripe Billing Meters are set up
  */
-export async function reportStorageUsage(siteId: string, storageUsedMb: number): Promise<void> {
-  const stripe = getStripe();
-  const db = admin.firestore();
-
-  // Get site billing info
-  const siteBillingSnapshot = await db
-    .collection('siteBilling')
-    .where('siteId', '==', siteId)
-    .limit(1)
-    .get();
-
-  if (siteBillingSnapshot.empty) return;
-
-  const siteBilling = siteBillingSnapshot.docs[0].data();
-  const subscriptionId = siteBilling.subscriptionId;
-
-  if (!subscriptionId) return;
-
-  // Calculate billable storage (anything over 250MB free tier)
-  const freeStorageMb = 250;
-  const billableStorageMb = Math.max(0, storageUsedMb - freeStorageMb);
-
-  if (billableStorageMb <= 0) return;
-
-  // Calculate units (500MB per unit)
-  const storageUnits = Math.ceil(billableStorageMb / 500);
-
-  // Get subscription to find metered item
-  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-  const meteredItem = subscription.items.data.find(
-    (item) => item.price.id === config.stripe.prices.storage500mb
-  );
-
-  if (meteredItem) {
-    // Report usage
-    await stripe.subscriptionItems.createUsageRecord(meteredItem.id, {
-      quantity: storageUnits,
-      timestamp: Math.floor(Date.now() / 1000),
-      action: 'set', // 'set' replaces previous value for this period
-    });
-  }
+export async function reportStorageUsage(_siteId: string, _storageUsedMb: number): Promise<void> {
+  // Storage metering requires Stripe Billing Meters setup
+  // For now, this is a placeholder - implement when needed
+  console.log('[Stripe] Storage metering not yet implemented');
 }
 
 // ============================================

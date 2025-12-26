@@ -13,6 +13,25 @@ import * as stripeService from '../services/stripe.js';
 const router = Router();
 
 /**
+ * Helper to get subscription period dates
+ * Stripe SDK types can vary, so we safely extract the values
+ */
+function getSubscriptionPeriod(subscription: Stripe.Subscription): {
+  start: number;
+  end: number;
+} {
+  // Access the properties using bracket notation to work around strict types
+  const sub = subscription as unknown as {
+    current_period_start: number;
+    current_period_end: number;
+  };
+  return {
+    start: sub.current_period_start,
+    end: sub.current_period_end,
+  };
+}
+
+/**
  * Format phone number to Namecheap's required format: +CountryCode.PhoneNumber
  */
 function formatPhoneForNamecheap(phone: string): string {
@@ -137,6 +156,7 @@ async function handleSubscriptionCreated(
 
   // Get subscription details from Stripe
   const subscription = await stripeService.getSubscription(subscriptionId);
+  const period = getSubscriptionPeriod(subscription);
 
   // Check if siteBilling already exists
   const existingDoc = await db
@@ -152,10 +172,8 @@ async function handleSubscriptionCreated(
     status: 'active',
     subscriptionId: subscriptionId,
     stripeCustomerId: session.customer as string,
-    currentPeriodStart: admin.firestore.Timestamp.fromMillis(
-      subscription.current_period_start * 1000
-    ),
-    currentPeriodEnd: admin.firestore.Timestamp.fromMillis(subscription.current_period_end * 1000),
+    currentPeriodStart: admin.firestore.Timestamp.fromMillis(period.start * 1000),
+    currentPeriodEnd: admin.firestore.Timestamp.fromMillis(period.end * 1000),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
 
@@ -272,13 +290,17 @@ async function handleInvoicePaid(
   invoice: Stripe.Invoice,
   db: FirebaseFirestore.Firestore
 ): Promise<void> {
-  const subscriptionId = invoice.subscription as string;
+  // Handle subscription as string or Stripe.Subscription object
+  const subscriptionId = typeof invoice.subscription === 'string'
+    ? invoice.subscription
+    : invoice.subscription?.id;
 
   if (!subscriptionId) return;
 
   console.log(`[Webhook] Invoice paid for subscription ${subscriptionId}`);
 
   const subscription = await stripeService.getSubscription(subscriptionId);
+  const period = getSubscriptionPeriod(subscription);
 
   const siteBillingQuery = await db
     .collection('siteBilling')
@@ -289,10 +311,8 @@ async function handleInvoicePaid(
   if (!siteBillingQuery.empty) {
     await siteBillingQuery.docs[0].ref.update({
       status: 'active',
-      currentPeriodStart: admin.firestore.Timestamp.fromMillis(
-        subscription.current_period_start * 1000
-      ),
-      currentPeriodEnd: admin.firestore.Timestamp.fromMillis(subscription.current_period_end * 1000),
+      currentPeriodStart: admin.firestore.Timestamp.fromMillis(period.start * 1000),
+      currentPeriodEnd: admin.firestore.Timestamp.fromMillis(period.end * 1000),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
   }
@@ -305,7 +325,10 @@ async function handleInvoicePaymentFailed(
   invoice: Stripe.Invoice,
   db: FirebaseFirestore.Firestore
 ): Promise<void> {
-  const subscriptionId = invoice.subscription as string;
+  // Handle subscription as string or Stripe.Subscription object
+  const subscriptionId = typeof invoice.subscription === 'string'
+    ? invoice.subscription
+    : invoice.subscription?.id;
 
   if (!subscriptionId) return;
 
@@ -358,6 +381,8 @@ async function handleSubscriptionUpdated(
 ): Promise<void> {
   console.log(`[Webhook] Subscription updated: ${subscription.id}`);
 
+  const period = getSubscriptionPeriod(subscription);
+
   const siteBillingQuery = await db
     .collection('siteBilling')
     .where('subscriptionId', '==', subscription.id)
@@ -368,10 +393,8 @@ async function handleSubscriptionUpdated(
     await siteBillingQuery.docs[0].ref.update({
       plan: getPlanFromPriceId(subscription.items.data[0].price.id),
       status: subscription.status === 'active' ? 'active' : 'past_due',
-      currentPeriodStart: admin.firestore.Timestamp.fromMillis(
-        subscription.current_period_start * 1000
-      ),
-      currentPeriodEnd: admin.firestore.Timestamp.fromMillis(subscription.current_period_end * 1000),
+      currentPeriodStart: admin.firestore.Timestamp.fromMillis(period.start * 1000),
+      currentPeriodEnd: admin.firestore.Timestamp.fromMillis(period.end * 1000),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
   }
