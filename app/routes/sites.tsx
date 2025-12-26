@@ -101,7 +101,7 @@ export default function Sites() {
             id: site.id || index + 1,
             siteId: site.siteId,
             title: site.name || 'Untitled Website',
-            url: site.domain || `${site.siteId}.lunaweb.app`,
+            url: site.domain || `${site.siteId}.luna-sites.com`,
             thumbnail: site.screenshotUrl || null,
             createdDate: new Date(site.createdAt).toLocaleDateString('en-US', {
               month: 'short',

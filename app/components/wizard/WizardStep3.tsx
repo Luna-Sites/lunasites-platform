@@ -76,7 +76,7 @@ export default function WizardStep3({
           <p className="text-sm text-slate-500 mt-3">
             Your site will be available at:{" "}
             <span className="text-purple-600 font-medium">
-              {siteId || "your-site"}.lunaweb.app
+              {siteId || "your-site"}.luna-sites.com
             </span>
           </p>
         </div>

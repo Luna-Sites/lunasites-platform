@@ -62,6 +62,9 @@ export default function Builder() {
   const [siteIdError, setSiteIdError] = useState<string | null>(null);
   const [createdSiteId, setCreatedSiteId] = useState<string | null>(null);
   const [siteStatus, setSiteStatus] = useState<string>("creating");
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const [siteIdAvailable, setSiteIdAvailable] = useState<boolean | null>(null);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // If user is logged in, skip auth step (3 steps instead of 4)
   const isLoggedIn = !!user;
@@ -166,7 +169,42 @@ export default function Builder() {
   const handleSiteIdChange = (id: string) => {
     const formatted = id.toLowerCase().replace(/[^a-z0-9-]/g, "");
     setSiteId(formatted);
-    setSiteIdError(validateSiteId(formatted));
+    setSiteIdAvailable(null);
+
+    // Validate format first
+    const formatError = validateSiteId(formatted);
+    setSiteIdError(formatError);
+
+    // Clear any existing debounce timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    // If there's a format error or empty, don't check availability
+    if (formatError || !formatted) {
+      setCheckingAvailability(false);
+      return;
+    }
+
+    // Start debounced availability check
+    setCheckingAvailability(true);
+    debounceTimerRef.current = setTimeout(async () => {
+      try {
+        const response = await api.checkSiteAvailability(formatted);
+        if (response.available) {
+          setSiteIdAvailable(true);
+          setSiteIdError(null);
+        } else {
+          setSiteIdAvailable(false);
+          setSiteIdError(response.reason || "This site ID is already taken");
+        }
+      } catch (err) {
+        console.error("Error checking site availability:", err);
+        setSiteIdError("Error checking availability");
+      } finally {
+        setCheckingAvailability(false);
+      }
+    }, 500); // 500ms debounce
   };
 
   const handleNext = async () => {
@@ -380,7 +418,7 @@ export default function Builder() {
                   siteTitle={siteTitle}
                   siteId={siteId}
                   siteIdError={siteIdError}
-                  checkingAvailability={false}
+                  checkingAvailability={checkingAvailability}
                   totalSteps={totalSteps}
                   onSiteTitleChange={setSiteTitle}
                   onSiteIdChange={handleSiteIdChange}
