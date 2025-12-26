@@ -72,18 +72,22 @@ export default function SiteSettings() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Check for payment success/cancelled from Stripe redirect
+  // Check for payment success/cancelled/failed from Stripe redirect
   useEffect(() => {
     const payment = searchParams.get('payment');
     if (payment === 'success') {
       setSuccess('Payment successful! Your subscription is now active.');
-      // Clean up URL
+    } else if (payment === 'cancelled') {
+      setError('Payment was cancelled. You can try again anytime.');
+    } else if (payment === 'failed') {
+      setError('Payment failed. Please try again or use a different payment method.');
+    } else if (payment === 'pending') {
+      setSuccess('Payment is being processed. Your subscription will be activated shortly.');
+    }
+    // Clean up URL
+    if (payment) {
       searchParams.delete('payment');
       searchParams.delete('session_id');
-      setSearchParams(searchParams, { replace: true });
-    } else if (payment === 'cancelled') {
-      setError('Payment was cancelled.');
-      searchParams.delete('payment');
       setSearchParams(searchParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);
