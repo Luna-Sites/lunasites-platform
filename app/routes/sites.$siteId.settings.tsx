@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, useSearchParams } from 'react-router';
 import type { Route } from "./+types/sites.$siteId.settings";
 import { useAuth } from "../contexts/AuthContext";
 import { api, type Site } from '../lib/api';
@@ -59,6 +59,7 @@ interface DomainEntry {
 export default function SiteSettings() {
   const { siteId } = useParams();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
 
   const [site, setSite] = useState<Site | null>(null);
@@ -70,6 +71,22 @@ export default function SiteSettings() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Check for payment success/cancelled from Stripe redirect
+  useEffect(() => {
+    const payment = searchParams.get('payment');
+    if (payment === 'success') {
+      setSuccess('Payment successful! Your subscription is now active.');
+      // Clean up URL
+      searchParams.delete('payment');
+      searchParams.delete('session_id');
+      setSearchParams(searchParams, { replace: true });
+    } else if (payment === 'cancelled') {
+      setError('Payment was cancelled.');
+      searchParams.delete('payment');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
   const [copied, setCopied] = useState(false);
   const [showDomainPurchase, setShowDomainPurchase] = useState(false);
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
@@ -183,8 +200,8 @@ export default function SiteSettings() {
       const result = await api.createSubscriptionCheckout({
         siteId,
         plan,
-        successUrl: settingsUrl,
-        cancelUrl: settingsUrl,
+        successUrl: `${settingsUrl}?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancelUrl: `${settingsUrl}?payment=cancelled`,
         withTrial: billing?.status === 'trialing',
       });
       if (result.url) {

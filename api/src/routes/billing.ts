@@ -384,6 +384,39 @@ router.get('/usage/:siteId', authMiddleware, async (req: AuthenticatedRequest, r
 });
 
 /**
+ * GET /billing/session/:sessionId
+ * Get checkout session details (siteId) for redirect after payment
+ */
+router.get('/session/:sessionId', async (req, res) => {
+  try {
+    const { sessionId } = req.params;
+
+    if (!sessionId || !sessionId.startsWith('cs_')) {
+      return res.status(400).json({ error: 'Invalid session ID' });
+    }
+
+    if (!stripeService.isConfigured()) {
+      return res.status(503).json({ error: 'Payment service not configured' });
+    }
+
+    const session = await stripeService.getCheckoutSession(sessionId);
+
+    if (!session) {
+      return res.status(404).json({ error: 'Session not found' });
+    }
+
+    return res.json({
+      siteId: session.metadata?.siteId || null,
+      status: session.status,
+      paymentStatus: session.payment_status,
+    });
+  } catch (error) {
+    console.error('Get session error:', error);
+    return res.status(500).json({ error: 'Failed to get session' });
+  }
+});
+
+/**
  * GET /billing/status
  * Get billing status for the current user
  */

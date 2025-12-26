@@ -337,6 +337,14 @@ export async function getSubscription(subscriptionId: string): Promise<Stripe.Su
 }
 
 /**
+ * Get checkout session by ID
+ */
+export async function getCheckoutSession(sessionId: string): Promise<Stripe.Checkout.Session> {
+  const stripe = getStripe();
+  return stripe.checkout.sessions.retrieve(sessionId);
+}
+
+/**
  * Construct webhook event from raw body and signature
  */
 export function constructWebhookEvent(
