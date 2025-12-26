@@ -519,16 +519,6 @@ export default function Sites() {
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <p className="text-xs text-slate-500 mb-1 font-medium">
-                                Template
-                              </p>
-                              <p
-                                className={`text-sm ${isPlaceholder ? 'text-slate-400' : 'text-slate-900'}`}
-                              >
-                                {site.template}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-slate-500 mb-1 font-medium">
                                 Created
                               </p>
                               <p
