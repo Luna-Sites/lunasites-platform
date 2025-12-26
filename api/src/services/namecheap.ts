@@ -39,12 +39,23 @@ function parseXmlAttribute(xml: string, tag: string, attr: string): string | nul
 }
 
 function parseXmlElements(xml: string, tag: string): string[] {
-  const regex = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)</${tag}>`, 'gi');
-  const matches = [];
+  // Match both self-closing tags (<Tag ... />) and regular tags (<Tag>...</Tag>)
+  const selfClosingRegex = new RegExp(`<${tag}[^>]*/>`, 'gi');
+  const regularRegex = new RegExp(`<${tag}[^>]*>[\\s\\S]*?</${tag}>`, 'gi');
+
+  const matches: string[] = [];
+
+  // Find self-closing tags
   let match;
-  while ((match = regex.exec(xml)) !== null) {
+  while ((match = selfClosingRegex.exec(xml)) !== null) {
     matches.push(match[0]);
   }
+
+  // Find regular tags
+  while ((match = regularRegex.exec(xml)) !== null) {
+    matches.push(match[0]);
+  }
+
   return matches;
 }
 
