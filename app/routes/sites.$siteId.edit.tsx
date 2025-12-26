@@ -1,9 +1,16 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams, Link } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowLeft, ExternalLink, X } from 'lucide-react';
+import { ArrowLeft, ExternalLink, X, Globe, Clock, Crown } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { api } from '../lib/api';
+
+interface SiteBilling {
+  plan: 'free' | 'starter' | 'pro' | 'enterprise';
+  status: 'active' | 'trialing' | 'past_due' | 'cancelled';
+  trialEndsAt?: string;
+  currentPeriodEnd?: string;
+}
 
 export function meta() {
   return [
@@ -20,6 +27,7 @@ export default function EditSite() {
   const [loading, setLoading] = useState(true);
   const [iframeLoading, setIframeLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [billing, setBilling] = useState<SiteBilling | null>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Redirect to login if not authenticated
@@ -41,6 +49,32 @@ export default function EditSite() {
       setLoading(true);
       const siteData = await api.getSite(siteId!);
       setSite(siteData);
+
+      // Load billing info for this site
+      try {
+        const subscriptions = await api.getSubscriptions();
+        const siteBilling = subscriptions.subscriptions?.find(
+          (sub: any) => sub.siteId === siteId
+        );
+        if (siteBilling) {
+          setBilling({
+            plan: siteBilling.plan || 'free',
+            status: siteBilling.status || 'trialing',
+            trialEndsAt: siteBilling.currentPeriodEnd,
+            currentPeriodEnd: siteBilling.currentPeriodEnd,
+          });
+        } else {
+          // No subscription = free trial
+          setBilling({
+            plan: 'free',
+            status: 'trialing',
+          });
+        }
+      } catch (billingErr) {
+        console.error('Error loading billing:', billingErr);
+        // Default to trial if billing fails
+        setBilling({ plan: 'free', status: 'trialing' });
+      }
     } catch (err) {
       console.error('Error loading site:', err);
       setError('Site not found or access denied');
@@ -99,6 +133,49 @@ export default function EditSite() {
     navigate('/sites');
   };
 
+  // Get subscription status display
+  const getSubscriptionInfo = () => {
+    if (!billing) return null;
+
+    const planLabels: Record<string, string> = {
+      free: 'Free Trial',
+      starter: 'Starter',
+      pro: 'Pro',
+      enterprise: 'Pro 2Y',
+    };
+
+    const daysLeft = billing.currentPeriodEnd
+      ? Math.ceil((new Date(billing.currentPeriodEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      : null;
+
+    if (billing.status === 'trialing' || billing.plan === 'free') {
+      return {
+        label: daysLeft && daysLeft > 0 ? `Trial: ${daysLeft} days left` : 'Trial expired',
+        urgent: !daysLeft || daysLeft <= 7,
+        icon: Clock,
+      };
+    }
+
+    if (billing.status === 'past_due') {
+      return {
+        label: 'Payment overdue',
+        urgent: true,
+        icon: Clock,
+      };
+    }
+
+    return {
+      label: planLabels[billing.plan] || 'Active',
+      urgent: false,
+      icon: Crown,
+    };
+  };
+
+  // Check if custom domain is available
+  const canUseCustomDomain = billing && ['pro', 'enterprise', 'monthly', 'annual', 'biennial'].includes(billing.plan);
+
+  const subscriptionInfo = getSubscriptionInfo();
+
   // Loading state
   if (!user || loading) {
     return (
@@ -150,6 +227,52 @@ export default function EditSite() {
             {site.name}
           </span>
         </div>
+
+        {/* Center: Custom domain prompt + Subscription status */}
+        <div className="flex items-center gap-3">
+          {/* Custom domain prompt */}
+          {!canUseCustomDomain && (
+            <Link
+              to={`/sites/${siteId}/settings`}
+              className="flex items-center gap-1.5 text-yellow-200 hover:text-white transition-colors text-xs bg-white/10 px-2 py-0.5 rounded"
+            >
+              <Globe className="w-3 h-3" />
+              <span>Want a custom domain? Upgrade now</span>
+            </Link>
+          )}
+          {canUseCustomDomain && !site.customDomain && (
+            <Link
+              to={`/sites/${siteId}/settings`}
+              className="flex items-center gap-1.5 text-green-200 hover:text-white transition-colors text-xs bg-white/10 px-2 py-0.5 rounded"
+            >
+              <Globe className="w-3 h-3" />
+              <span>Connect your custom domain</span>
+            </Link>
+          )}
+
+          {/* Subscription status */}
+          {subscriptionInfo && (
+            <div
+              className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded ${
+                subscriptionInfo.urgent
+                  ? 'bg-red-500/20 text-red-200'
+                  : 'bg-white/10 text-purple-200'
+              }`}
+            >
+              <subscriptionInfo.icon className="w-3 h-3" />
+              <span>{subscriptionInfo.label}</span>
+              {(subscriptionInfo.urgent || billing?.plan === 'free' || billing?.plan === 'starter') && (
+                <Link
+                  to={`/sites/${siteId}/settings`}
+                  className="ml-1 underline hover:text-white"
+                >
+                  Upgrade
+                </Link>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="flex items-center gap-2">
           <a
             href={`https://${site.domain}`}
