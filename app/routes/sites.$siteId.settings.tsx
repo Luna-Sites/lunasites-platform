@@ -106,32 +106,73 @@ export default function SiteSettings() {
   useEffect(() => {
     const payment = searchParams.get('payment');
     const sessionId = searchParams.get('session_id');
-    console.log('[Settings] Payment redirect check - payment:', payment, 'session_id:', sessionId);
+    const purchasedDomain = searchParams.get('domain');
+    console.log('[Settings] Payment redirect check - payment:', payment, 'session_id:', sessionId, 'domain:', purchasedDomain);
 
-    if (payment === 'success') {
-      console.log('[Settings] Payment SUCCESS detected!');
-      setSuccess('Payment successful! Your subscription is now active.');
-      // Reload billing data to reflect new subscription
-      reloadBilling();
-    } else if (payment === 'cancelled') {
-      console.log('[Settings] Payment CANCELLED');
-      setError('Payment was cancelled. You can try again anytime.');
-    } else if (payment === 'failed') {
-      console.log('[Settings] Payment FAILED');
-      setError('Payment failed. Please try again or use a different payment method.');
-    } else if (payment === 'pending') {
-      console.log('[Settings] Payment PENDING');
-      setSuccess('Payment is being processed. Your subscription will be activated shortly.');
-      // Reload billing in case webhook already processed
-      reloadBilling();
-    }
-    // Clean up URL
-    if (payment) {
-      console.log('[Settings] Cleaning up URL params');
-      searchParams.delete('payment');
-      searchParams.delete('session_id');
-      setSearchParams(searchParams, { replace: true });
-    }
+    const handlePaymentResult = async () => {
+      if (payment === 'success') {
+        console.log('[Settings] Payment SUCCESS detected!');
+
+        // Check if this is a domain purchase
+        if (purchasedDomain && siteId) {
+          console.log('[Settings] Domain purchase success, attempting to connect domain:', purchasedDomain);
+          setSuccess(`Domain ${purchasedDomain} purchased successfully! Connecting to your site...`);
+
+          // Try to connect the purchased domain to the site
+          try {
+            await api.addCustomDomain(siteId, purchasedDomain, true);
+            // Refresh domains list
+            const domainsResponse = await api.getCustomDomains(siteId);
+            const domainsWithInstructions: DomainEntry[] = domainsResponse.customDomains.map(d => ({
+              domain: d,
+              dnsInstructions: domainsResponse.dnsInstructions || null,
+            }));
+            setDomains(domainsWithInstructions);
+            setSuccess(`Domain ${purchasedDomain} purchased and connected successfully!`);
+          } catch (connectErr) {
+            console.error('[Settings] Failed to connect domain after purchase:', connectErr);
+            // Domain purchased but failed to auto-connect
+            setSuccess(`Domain ${purchasedDomain} purchased successfully! You can connect it using "Use domain bought through Luna Sites".`);
+          }
+
+          // Reset purchase modal state
+          setShowDomainPurchase(false);
+          setSelectedDomain(null);
+          setDomainOption(null);
+          setShowAddForm(false);
+        } else {
+          // Subscription payment success
+          setSuccess('Payment successful! Your subscription is now active.');
+          // Reload billing data to reflect new subscription
+          reloadBilling();
+        }
+      } else if (payment === 'cancelled') {
+        console.log('[Settings] Payment CANCELLED');
+        setError('Payment was cancelled. You can try again anytime.');
+        // Reset purchase modal state
+        setShowDomainPurchase(false);
+        setSelectedDomain(null);
+      } else if (payment === 'failed') {
+        console.log('[Settings] Payment FAILED');
+        setError('Payment failed. Please try again or use a different payment method.');
+      } else if (payment === 'pending') {
+        console.log('[Settings] Payment PENDING');
+        setSuccess('Payment is being processed. Your subscription will be activated shortly.');
+        // Reload billing in case webhook already processed
+        reloadBilling();
+      }
+
+      // Clean up URL
+      if (payment) {
+        console.log('[Settings] Cleaning up URL params');
+        searchParams.delete('payment');
+        searchParams.delete('session_id');
+        searchParams.delete('domain');
+        setSearchParams(searchParams, { replace: true });
+      }
+    };
+
+    handlePaymentResult();
   }, [searchParams, setSearchParams, siteId]);
   const [copied, setCopied] = useState(false);
   const [showDomainPurchase, setShowDomainPurchase] = useState(false);
@@ -444,10 +485,10 @@ export default function SiteSettings() {
     setShowDomainPurchase(true);
   };
 
-  // Handle domain purchase
+  // Handle domain purchase via Stripe checkout
   const handlePurchaseDomain = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedDomain) return;
+    if (!selectedDomain || !siteId) return;
 
     // Validate contact form
     const requiredFields = ['firstName', 'lastName', 'email', 'phone', 'address1', 'city', 'stateProvince', 'postalCode', 'country'];
@@ -462,48 +503,24 @@ export default function SiteSettings() {
     setPurchaseLoading(true);
 
     try {
-      const result = await api.purchaseDomain({
+      // Create Stripe checkout session for domain purchase
+      const settingsUrl = `${window.location.origin}/sites/${siteId}/settings`;
+      const result = await api.createDomainCheckout({
         domain: selectedDomain,
         years: 1,
         contact: contactForm,
+        successUrl: `${settingsUrl}?payment=success&domain=${encodeURIComponent(selectedDomain)}`,
+        cancelUrl: `${settingsUrl}?payment=cancelled`,
       });
 
-      if (result.success) {
-        // Automatically add the purchased domain to the site with auto DNS configuration
-        try {
-          await api.addCustomDomain(siteId!, selectedDomain, true);
-          // Refresh domains list
-          const domainsResponse = await api.getCustomDomains(siteId!);
-          const domainsWithInstructions: DomainEntry[] = domainsResponse.customDomains.map(d => ({
-            domain: d,
-            dnsInstructions: domainsResponse.dnsInstructions || null,
-          }));
-          setDomains(domainsWithInstructions);
-          setSuccess(`Domain ${selectedDomain} purchased and connected successfully!`);
-        } catch (connectErr) {
-          // Domain purchased but failed to connect - still show success
-          setSuccess(`Domain ${selectedDomain} purchased successfully! You can connect it using "Use domain bought through Luna Sites".`);
-        }
-
-        setShowDomainPurchase(false);
-        setSelectedDomain(null);
-        setDomainOption(null);
-        setShowAddForm(false);
-        setContactForm({
-          firstName: '',
-          lastName: '',
-          email: user?.email || '',
-          phone: '',
-          address1: '',
-          city: '',
-          stateProvince: '',
-          postalCode: '',
-          country: 'US',
-        });
+      // Redirect to Stripe checkout
+      if (result.url) {
+        window.location.href = result.url;
+      } else {
+        throw new Error('No checkout URL received');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to purchase domain');
-    } finally {
+      setError(err instanceof Error ? err.message : 'Failed to start checkout');
       setPurchaseLoading(false);
     }
   };
@@ -1263,6 +1280,11 @@ export default function SiteSettings() {
             </div>
 
             <form onSubmit={handlePurchaseDomain} className="p-6 space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+                <p className="text-sm text-blue-700">
+                  After filling in your contact information, you'll be redirected to Stripe for secure payment.
+                </p>
+              </div>
               <p className="text-sm text-slate-600 mb-4">
                 Please provide contact information for domain registration (WHOIS).
               </p>
@@ -1384,7 +1406,7 @@ export default function SiteSettings() {
                   disabled={purchaseLoading}
                   className="flex-1 bg-gradient-to-r from-[#5A318F] to-[#D920B7] hover:from-[#4A2875] hover:to-[#C01AA3] text-white py-3 rounded-lg font-medium transition-all disabled:opacity-50"
                 >
-                  {purchaseLoading ? 'Processing...' : `Purchase ${selectedDomain}`}
+                  {purchaseLoading ? 'Redirecting to checkout...' : `Continue to Payment`}
                 </button>
                 <button
                   type="button"
