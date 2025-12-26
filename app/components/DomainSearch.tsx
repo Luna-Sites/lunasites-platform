@@ -88,23 +88,38 @@ export function DomainSearch({ onSelectDomain, onPurchase, showPurchaseButton = 
     }
 
     // Clean the query
-    const cleanQuery = query.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    const trimmedQuery = query.toLowerCase().trim();
+    const cleanQuery = trimmedQuery.replace(/[^a-z0-9-]/g, '');
+
     if (!cleanQuery) {
       setResults([]);
       return;
+    }
+
+    // If query ends with a dot, user is still typing the TLD - wait
+    if (trimmedQuery.endsWith('.')) {
+      return;
+    }
+
+    const hasDot = trimmedQuery.includes('.');
+
+    // If has dot, validate it has a proper TLD (at least 2 chars after dot)
+    if (hasDot) {
+      const parts = trimmedQuery.split('.');
+      const tld = parts[parts.length - 1];
+      if (tld.length < 2) {
+        return;
+      }
     }
 
     setLoading(true);
     setError(null);
 
     try {
-      // Check if user entered a full domain (with TLD)
-      const hasTld = query.includes('.');
-
       let domainsToCheck: string[];
-      if (hasTld) {
+      if (hasDot) {
         // User entered full domain, check just that one
-        domainsToCheck = [query.toLowerCase().trim()];
+        domainsToCheck = [trimmedQuery];
       } else {
         // Generate variations with popular TLDs
         domainsToCheck = popularTlds.map(tld => `${cleanQuery}${tld}`);
