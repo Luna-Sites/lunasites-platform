@@ -147,6 +147,14 @@ export default function Sites() {
                 })
               : null;
 
+            // Calculate last edited date
+            const updatedAt = site.updatedAt ? new Date(site.updatedAt) : createdAt;
+            const lastEditedDate = updatedAt.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            });
+
             return {
               id: site.id || index + 1,
               siteId: site.siteId,
@@ -159,10 +167,9 @@ export default function Sites() {
                 day: 'numeric',
                 year: 'numeric',
               }),
-              lastEdited: 'Recently',
+              lastEdited: lastEditedDate,
               status: site.status === 'active' ? 'Published' : 'Draft',
               views: '0',
-              template: 'Custom',
               // Billing info
               plan,
               billingStatus,
