@@ -248,14 +248,14 @@ export async function createDomainCheckout(params: {
 }
 
 /**
- * Create a Stripe Checkout session for domain purchase with explicit price
+ * Create a Stripe Checkout session for domain purchase with explicit price (subscription style - yearly renewal)
  */
 export async function createDomainCheckoutWithPrice(params: {
   userId: string;
   email: string;
   domain: string;
   years: number;
-  priceEur: number; // Price in EUR (already includes markup)
+  priceEur: number; // Price in EUR per year (already includes markup)
   successUrl: string;
   cancelUrl: string;
   contact?: {
@@ -279,16 +279,20 @@ export async function createDomainCheckoutWithPrice(params: {
 
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
-    mode: 'payment',
+    mode: 'subscription',
     payment_method_types: ['card'],
     line_items: [
       {
         price_data: {
           currency: 'eur',
           unit_amount: priceInCents,
+          recurring: {
+            interval: 'year',
+            interval_count: 1,
+          },
           product_data: {
-            name: `Domain Registration: ${params.domain}`,
-            description: `${params.years} year${params.years > 1 ? 's' : ''} registration`,
+            name: `Domain: ${params.domain}`,
+            description: `Annual domain registration`,
           },
         },
         quantity: 1,
@@ -312,6 +316,13 @@ export async function createDomainCheckoutWithPrice(params: {
         contactPhone: params.contact.phone,
         contactEmail: params.contact.email,
       }),
+    },
+    subscription_data: {
+      metadata: {
+        type: 'domain_subscription',
+        userId: params.userId,
+        domain: params.domain,
+      },
     },
     success_url: params.successUrl,
     cancel_url: params.cancelUrl,

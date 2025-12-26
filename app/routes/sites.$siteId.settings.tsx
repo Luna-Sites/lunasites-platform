@@ -1286,7 +1286,7 @@ export default function SiteSettings() {
             <form onSubmit={handlePurchaseDomain} className="p-6 space-y-4">
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
                 <p className="text-sm text-blue-700">
-                  After filling in your contact information, you'll be redirected to Stripe for secure payment.
+                  This is a yearly subscription that renews automatically. You'll be redirected to Stripe for secure payment.
                 </p>
               </div>
               <p className="text-sm text-slate-600 mb-4">
