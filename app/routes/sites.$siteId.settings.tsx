@@ -179,9 +179,12 @@ export default function SiteSettings() {
     if (!siteId) return;
     setUpgradeLoading(true);
     try {
+      const settingsUrl = `${window.location.origin}/sites/${siteId}/settings`;
       const result = await api.createSubscriptionCheckout({
         siteId,
         plan,
+        successUrl: settingsUrl,
+        cancelUrl: settingsUrl,
         withTrial: billing?.status === 'trialing',
       });
       if (result.url) {
