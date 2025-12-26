@@ -305,22 +305,35 @@ router.post('/cancel/:siteId', authMiddleware, async (req: AuthenticatedRequest,
 router.get('/subscriptions', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const userId = req.user!.uid;
-    const db = admin.firestore();
+    console.log(`[Billing] Getting subscriptions for user: ${userId}`);
 
+    const db = admin.firestore();
     const siteBillingDocs = await db.collection('siteBilling').where('userId', '==', userId).get();
 
-    const subscriptions = siteBillingDocs.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      currentPeriodStart: doc.data().currentPeriodStart?.toDate().toISOString(),
-      currentPeriodEnd: doc.data().currentPeriodEnd?.toDate().toISOString(),
-      createdAt: doc.data().createdAt?.toDate().toISOString(),
-      updatedAt: doc.data().updatedAt?.toDate().toISOString(),
-    }));
+    console.log(`[Billing] Found ${siteBillingDocs.docs.length} siteBilling documents`);
 
+    const subscriptions = siteBillingDocs.docs.map((doc) => {
+      const data = doc.data();
+      console.log(`[Billing] Processing doc ${doc.id}:`, JSON.stringify({
+        siteId: data.siteId,
+        plan: data.plan,
+        status: data.status,
+      }));
+
+      return {
+        id: doc.id,
+        ...data,
+        currentPeriodStart: data.currentPeriodStart?.toDate?.()?.toISOString() || null,
+        currentPeriodEnd: data.currentPeriodEnd?.toDate?.()?.toISOString() || null,
+        createdAt: data.createdAt?.toDate?.()?.toISOString() || null,
+        updatedAt: data.updatedAt?.toDate?.()?.toISOString() || null,
+      };
+    });
+
+    console.log(`[Billing] Returning subscriptions:`, JSON.stringify(subscriptions, null, 2));
     return res.json({ subscriptions });
   } catch (error) {
-    console.error('Get subscriptions error:', error);
+    console.error('[Billing] Get subscriptions error:', error);
     return res.status(500).json({ error: 'Failed to get subscriptions' });
   }
 });

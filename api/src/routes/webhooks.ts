@@ -153,10 +153,24 @@ async function handleSubscriptionCreated(
   const subscriptionId = session.subscription as string;
 
   console.log(`[Webhook] Processing subscription for site ${metadata.siteId}`);
+  console.log(`[Webhook] Subscription ID: ${subscriptionId}`);
 
   // Get subscription details from Stripe
   const subscription = await stripeService.getSubscription(subscriptionId);
+  console.log(`[Webhook] Subscription status: ${subscription.status}`);
+
   const period = getSubscriptionPeriod(subscription);
+  console.log(`[Webhook] Period: start=${period.start}, end=${period.end}`);
+
+  // Validate period values
+  const now = Math.floor(Date.now() / 1000);
+  const periodStart = period.start && Number.isFinite(period.start) ? period.start : now;
+  const periodEnd = period.end && Number.isFinite(period.end) ? period.end : now + (30 * 24 * 60 * 60); // Default 30 days
+
+  console.log(`[Webhook] Using period: start=${periodStart}, end=${periodEnd}`);
+
+  const plan = getPlanFromPriceId(subscription.items.data[0].price.id);
+  console.log(`[Webhook] Mapped plan: ${plan}`);
 
   // Check if siteBilling already exists
   const existingDoc = await db
@@ -168,25 +182,33 @@ async function handleSubscriptionCreated(
   const billingData = {
     siteId: metadata.siteId,
     userId: metadata.userId,
-    plan: getPlanFromPriceId(subscription.items.data[0].price.id),
+    plan: plan,
     status: 'active',
     subscriptionId: subscriptionId,
     stripeCustomerId: session.customer as string,
-    currentPeriodStart: admin.firestore.Timestamp.fromMillis(period.start * 1000),
-    currentPeriodEnd: admin.firestore.Timestamp.fromMillis(period.end * 1000),
+    currentPeriodStart: admin.firestore.Timestamp.fromMillis(periodStart * 1000),
+    currentPeriodEnd: admin.firestore.Timestamp.fromMillis(periodEnd * 1000),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   };
 
+  console.log(`[Webhook] Billing data to save:`, JSON.stringify({
+    ...billingData,
+    currentPeriodStart: new Date(periodStart * 1000).toISOString(),
+    currentPeriodEnd: new Date(periodEnd * 1000).toISOString(),
+  }, null, 2));
+
   if (existingDoc.empty) {
+    console.log(`[Webhook] Creating new siteBilling document`);
     await db.collection('siteBilling').add({
       ...billingData,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
   } else {
+    console.log(`[Webhook] Updating existing siteBilling document: ${existingDoc.docs[0].id}`);
     await existingDoc.docs[0].ref.update(billingData);
   }
 
-  console.log(`[Webhook] Subscription created for site ${metadata.siteId}`);
+  console.log(`[Webhook] Subscription created successfully for site ${metadata.siteId}`);
 }
 
 /**
@@ -296,12 +318,21 @@ async function handleInvoicePaid(
     ? invoiceData.subscription
     : invoiceData.subscription?.id;
 
-  if (!subscriptionId) return;
+  if (!subscriptionId) {
+    console.log(`[Webhook] Invoice paid but no subscription ID found`);
+    return;
+  }
 
   console.log(`[Webhook] Invoice paid for subscription ${subscriptionId}`);
 
   const subscription = await stripeService.getSubscription(subscriptionId);
   const period = getSubscriptionPeriod(subscription);
+  console.log(`[Webhook] Invoice period: start=${period.start}, end=${period.end}`);
+
+  // Validate period values
+  const now = Math.floor(Date.now() / 1000);
+  const periodStart = period.start && Number.isFinite(period.start) ? period.start : now;
+  const periodEnd = period.end && Number.isFinite(period.end) ? period.end : now + (30 * 24 * 60 * 60);
 
   const siteBillingQuery = await db
     .collection('siteBilling')
@@ -310,12 +341,15 @@ async function handleInvoicePaid(
     .get();
 
   if (!siteBillingQuery.empty) {
+    console.log(`[Webhook] Updating siteBilling for invoice paid`);
     await siteBillingQuery.docs[0].ref.update({
       status: 'active',
-      currentPeriodStart: admin.firestore.Timestamp.fromMillis(period.start * 1000),
-      currentPeriodEnd: admin.firestore.Timestamp.fromMillis(period.end * 1000),
+      currentPeriodStart: admin.firestore.Timestamp.fromMillis(periodStart * 1000),
+      currentPeriodEnd: admin.firestore.Timestamp.fromMillis(periodEnd * 1000),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
+  } else {
+    console.log(`[Webhook] No siteBilling found for subscription ${subscriptionId}`);
   }
 }
 
@@ -384,6 +418,12 @@ async function handleSubscriptionUpdated(
   console.log(`[Webhook] Subscription updated: ${subscription.id}`);
 
   const period = getSubscriptionPeriod(subscription);
+  console.log(`[Webhook] Update period: start=${period.start}, end=${period.end}`);
+
+  // Validate period values
+  const now = Math.floor(Date.now() / 1000);
+  const periodStart = period.start && Number.isFinite(period.start) ? period.start : now;
+  const periodEnd = period.end && Number.isFinite(period.end) ? period.end : now + (30 * 24 * 60 * 60);
 
   const siteBillingQuery = await db
     .collection('siteBilling')
@@ -392,13 +432,17 @@ async function handleSubscriptionUpdated(
     .get();
 
   if (!siteBillingQuery.empty) {
+    const plan = getPlanFromPriceId(subscription.items.data[0].price.id);
+    console.log(`[Webhook] Updating subscription to plan: ${plan}, status: ${subscription.status}`);
     await siteBillingQuery.docs[0].ref.update({
-      plan: getPlanFromPriceId(subscription.items.data[0].price.id),
+      plan: plan,
       status: subscription.status === 'active' ? 'active' : 'past_due',
-      currentPeriodStart: admin.firestore.Timestamp.fromMillis(period.start * 1000),
-      currentPeriodEnd: admin.firestore.Timestamp.fromMillis(period.end * 1000),
+      currentPeriodStart: admin.firestore.Timestamp.fromMillis(periodStart * 1000),
+      currentPeriodEnd: admin.firestore.Timestamp.fromMillis(periodEnd * 1000),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     });
+  } else {
+    console.log(`[Webhook] No siteBilling found for subscription ${subscription.id}`);
   }
 }
 
@@ -408,11 +452,27 @@ async function handleSubscriptionUpdated(
 function getPlanFromPriceId(priceId: string): 'free' | 'starter' | 'pro' | 'enterprise' {
   const { prices } = config.stripe;
 
-  if (priceId === prices.starter) return 'starter';
-  if (priceId === prices.monthly) return 'pro';
-  if (priceId === prices.annual) return 'pro';
-  if (priceId === prices.biennial) return 'enterprise'; // Use enterprise for best plan
+  console.log(`[Webhook] getPlanFromPriceId called with priceId: ${priceId}`);
+  console.log(`[Webhook] Config prices:`, JSON.stringify(prices, null, 2));
 
+  if (priceId === prices.starter) {
+    console.log(`[Webhook] Matched starter plan`);
+    return 'starter';
+  }
+  if (priceId === prices.monthly) {
+    console.log(`[Webhook] Matched monthly -> pro plan`);
+    return 'pro';
+  }
+  if (priceId === prices.annual) {
+    console.log(`[Webhook] Matched annual -> pro plan`);
+    return 'pro';
+  }
+  if (priceId === prices.biennial) {
+    console.log(`[Webhook] Matched biennial -> enterprise plan`);
+    return 'enterprise';
+  }
+
+  console.log(`[Webhook] No match found, defaulting to free`);
   return 'free';
 }
 

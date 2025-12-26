@@ -72,25 +72,67 @@ export default function SiteSettings() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  // Function to reload billing data
+  const reloadBilling = async () => {
+    console.log('[Settings] reloadBilling called, siteId:', siteId);
+    if (!siteId) return;
+    try {
+      console.log('[Settings] Fetching subscriptions...');
+      const subscriptions = await api.getSubscriptions();
+      console.log('[Settings] Got subscriptions:', JSON.stringify(subscriptions, null, 2));
+
+      const siteBilling = subscriptions.subscriptions?.find(
+        (sub: any) => sub.siteId === siteId
+      );
+      console.log('[Settings] Found siteBilling for this site:', JSON.stringify(siteBilling, null, 2));
+
+      if (siteBilling) {
+        const newBilling = {
+          plan: siteBilling.plan || 'free',
+          status: siteBilling.status || 'trialing',
+          currentPeriodEnd: siteBilling.currentPeriodEnd,
+        };
+        console.log('[Settings] Setting billing state to:', JSON.stringify(newBilling, null, 2));
+        setBilling(newBilling);
+      } else {
+        console.log('[Settings] No siteBilling found for siteId:', siteId);
+      }
+    } catch (err) {
+      console.error('[Settings] Error reloading billing:', err);
+    }
+  };
+
   // Check for payment success/cancelled/failed from Stripe redirect
   useEffect(() => {
     const payment = searchParams.get('payment');
+    const sessionId = searchParams.get('session_id');
+    console.log('[Settings] Payment redirect check - payment:', payment, 'session_id:', sessionId);
+
     if (payment === 'success') {
+      console.log('[Settings] Payment SUCCESS detected!');
       setSuccess('Payment successful! Your subscription is now active.');
+      // Reload billing data to reflect new subscription
+      reloadBilling();
     } else if (payment === 'cancelled') {
+      console.log('[Settings] Payment CANCELLED');
       setError('Payment was cancelled. You can try again anytime.');
     } else if (payment === 'failed') {
+      console.log('[Settings] Payment FAILED');
       setError('Payment failed. Please try again or use a different payment method.');
     } else if (payment === 'pending') {
+      console.log('[Settings] Payment PENDING');
       setSuccess('Payment is being processed. Your subscription will be activated shortly.');
+      // Reload billing in case webhook already processed
+      reloadBilling();
     }
     // Clean up URL
     if (payment) {
+      console.log('[Settings] Cleaning up URL params');
       searchParams.delete('payment');
       searchParams.delete('session_id');
       setSearchParams(searchParams, { replace: true });
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, siteId]);
   const [copied, setCopied] = useState(false);
   const [showDomainPurchase, setShowDomainPurchase] = useState(false);
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
