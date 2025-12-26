@@ -3,10 +3,16 @@ import { useParams, useNavigate } from 'react-router';
 import type { Route } from "./+types/sites.$siteId.settings";
 import { useAuth } from "../contexts/AuthContext";
 import { api, type Site } from '../lib/api';
-import { Settings, LogOut, HelpCircle, Layout, ArrowLeft, Globe, CheckCircle, XCircle, Clock, Copy, ExternalLink, Trash2, RefreshCw, Shield, Plus, ShoppingCart, X } from 'lucide-react';
+import { Settings, LogOut, HelpCircle, Layout, ArrowLeft, Globe, CheckCircle, XCircle, Clock, Copy, ExternalLink, Trash2, RefreshCw, Shield, Plus, ShoppingCart, X, Crown, Lock } from 'lucide-react';
 import { auth } from '../lib/firebase';
 import { signOut } from 'firebase/auth';
 import DomainSearch from '../components/DomainSearch';
+
+interface SiteBilling {
+  plan: 'free' | 'starter' | 'pro' | 'enterprise';
+  status: 'active' | 'trialing' | 'past_due' | 'cancelled';
+  currentPeriodEnd?: string;
+}
 
 const Logo = '/logo/logo_lunasites_gradient.png';
 
@@ -68,6 +74,8 @@ export default function SiteSettings() {
   const [showDomainPurchase, setShowDomainPurchase] = useState(false);
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
   const [purchaseLoading, setPurchaseLoading] = useState(false);
+  const [billing, setBilling] = useState<SiteBilling | null>(null);
+  const [upgradeLoading, setUpgradeLoading] = useState(false);
   const [contactForm, setContactForm] = useState({
     firstName: '',
     lastName: '',
@@ -111,6 +119,30 @@ export default function SiteSettings() {
 
         setSite(siteData);
 
+        // Load billing info for this site
+        try {
+          const subscriptions = await api.getSubscriptions();
+          const siteBilling = subscriptions.subscriptions?.find(
+            (sub: any) => sub.siteId === siteId
+          );
+          if (siteBilling) {
+            setBilling({
+              plan: siteBilling.plan || 'free',
+              status: siteBilling.status || 'trialing',
+              currentPeriodEnd: siteBilling.currentPeriodEnd,
+            });
+          } else {
+            // No subscription = free trial
+            setBilling({
+              plan: 'free',
+              status: 'trialing',
+            });
+          }
+        } catch (billingErr) {
+          console.error('Error loading billing:', billingErr);
+          setBilling({ plan: 'free', status: 'trialing' });
+        }
+
         // Map array of domains to DomainEntry format
         if (domainData.customDomains && domainData.customDomains.length > 0) {
           const entries = domainData.customDomains.map(d => ({
@@ -138,6 +170,30 @@ export default function SiteSettings() {
 
     loadData();
   }, [siteId]);
+
+  // Check if plan allows custom domains
+  const canUseCustomDomain = billing && ['pro', 'enterprise'].includes(billing.plan);
+
+  // Handle upgrade to Pro
+  const handleUpgrade = async (plan: 'monthly' | 'annual' | 'biennial') => {
+    if (!siteId) return;
+    setUpgradeLoading(true);
+    try {
+      const result = await api.createSubscriptionCheckout({
+        siteId,
+        plan,
+        withTrial: billing?.status === 'trialing',
+      });
+      if (result.url) {
+        window.location.href = result.url;
+      }
+    } catch (err) {
+      console.error('Upgrade error:', err);
+      setError('Failed to start upgrade process');
+    } finally {
+      setUpgradeLoading(false);
+    }
+  };
 
   // Refresh domain status
   const refreshStatus = async () => {
@@ -449,6 +505,116 @@ export default function SiteSettings() {
             )}
 
             <div className="space-y-8">
+              {/* Subscription Status */}
+              <div className="bg-white border border-slate-200 rounded-xl p-6">
+                <h2 className="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
+                  <Crown className="w-5 h-5" />
+                  Subscription
+                </h2>
+
+                {billing && (
+                  <div className="space-y-4">
+                    {/* Current Plan Display */}
+                    <div className={`p-4 rounded-lg ${
+                      billing.plan === 'free' || billing.status === 'trialing'
+                        ? 'bg-amber-50 border border-amber-200'
+                        : billing.status === 'past_due'
+                        ? 'bg-red-50 border border-red-200'
+                        : 'bg-green-50 border border-green-200'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-slate-900">
+                            {billing.plan === 'free' && 'Free Trial'}
+                            {billing.plan === 'starter' && 'Starter Plan'}
+                            {billing.plan === 'pro' && 'Pro Plan'}
+                            {billing.plan === 'enterprise' && 'Pro 2 Years'}
+                          </p>
+                          <p className="text-sm text-slate-600 mt-1">
+                            {billing.status === 'trialing' && (
+                              <>
+                                <Clock className="w-4 h-4 inline mr-1" />
+                                {billing.currentPeriodEnd
+                                  ? `Trial ends ${new Date(billing.currentPeriodEnd).toLocaleDateString()}`
+                                  : '29 days free trial'}
+                              </>
+                            )}
+                            {billing.status === 'active' && billing.currentPeriodEnd && (
+                              <>Next billing: {new Date(billing.currentPeriodEnd).toLocaleDateString()}</>
+                            )}
+                            {billing.status === 'past_due' && (
+                              <span className="text-red-600">Payment overdue - please update your payment method</span>
+                            )}
+                            {billing.status === 'cancelled' && 'Subscription cancelled'}
+                          </p>
+                        </div>
+                        {(billing.plan === 'free' || billing.plan === 'starter') && (
+                          <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded">
+                            {billing.plan === 'starter' ? 'No custom domain' : 'Trial'}
+                          </span>
+                        )}
+                        {billing.plan === 'pro' && billing.status === 'active' && (
+                          <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" /> Active
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Upgrade Options */}
+                    {(billing.plan === 'free' || billing.plan === 'starter') && (
+                      <div className="mt-4">
+                        <p className="text-sm font-medium text-slate-700 mb-3">
+                          {billing.plan === 'starter'
+                            ? 'Upgrade to Pro to use custom domains:'
+                            : 'Choose a plan to continue after trial:'}
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <button
+                            onClick={() => handleUpgrade('monthly')}
+                            disabled={upgradeLoading}
+                            className="p-4 border border-slate-200 rounded-lg hover:border-[#5A318F] hover:bg-purple-50 transition-all text-left"
+                          >
+                            <p className="font-semibold text-slate-900">Pro Monthly</p>
+                            <p className="text-lg font-bold text-[#5A318F]">€13<span className="text-sm font-normal text-slate-500">/mo</span></p>
+                            <p className="text-xs text-slate-500 mt-1">Custom domain included</p>
+                          </button>
+                          <button
+                            onClick={() => handleUpgrade('annual')}
+                            disabled={upgradeLoading}
+                            className="p-4 border-2 border-[#5A318F] rounded-lg bg-purple-50 hover:bg-purple-100 transition-all text-left relative"
+                          >
+                            <span className="absolute -top-2 right-2 bg-[#D920B7] text-white text-xs px-2 py-0.5 rounded">Save 23%</span>
+                            <p className="font-semibold text-slate-900">Pro Annual</p>
+                            <p className="text-lg font-bold text-[#5A318F]">€9.99<span className="text-sm font-normal text-slate-500">/mo</span></p>
+                            <p className="text-xs text-slate-500 mt-1">€119.88/year</p>
+                          </button>
+                          <button
+                            onClick={() => handleUpgrade('biennial')}
+                            disabled={upgradeLoading}
+                            className="p-4 border border-slate-200 rounded-lg hover:border-[#5A318F] hover:bg-purple-50 transition-all text-left relative"
+                          >
+                            <span className="absolute -top-2 right-2 bg-green-500 text-white text-xs px-2 py-0.5 rounded">Best Value</span>
+                            <p className="font-semibold text-slate-900">Pro 2 Years</p>
+                            <p className="text-lg font-bold text-[#5A318F]">€6.99<span className="text-sm font-normal text-slate-500">/mo</span></p>
+                            <p className="text-xs text-slate-500 mt-1">€167.76/2 years</p>
+                          </button>
+                        </div>
+                        {billing.plan === 'free' && (
+                          <button
+                            onClick={() => handleUpgrade('starter' as any)}
+                            disabled={upgradeLoading}
+                            className="w-full mt-3 p-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition-all text-center text-sm text-slate-600"
+                          >
+                            Or continue with <strong>Starter at €4.99/mo</strong> (no custom domain)
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               {/* Current Domain */}
               <div className="bg-white border border-slate-200 rounded-xl p-6">
                 <h2 className="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
@@ -481,9 +647,14 @@ export default function SiteSettings() {
                   <h2 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
                     <Globe className="w-5 h-5" />
                     Custom Domains
+                    {!canUseCustomDomain && (
+                      <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> Pro required
+                      </span>
+                    )}
                   </h2>
                   <div className="flex items-center gap-2">
-                    {domains.length > 0 && (
+                    {canUseCustomDomain && domains.length > 0 && (
                       <button
                         onClick={refreshStatus}
                         disabled={actionLoading === 'refresh'}
@@ -493,7 +664,7 @@ export default function SiteSettings() {
                         <RefreshCw className={`w-4 h-4 ${actionLoading === 'refresh' ? 'animate-spin' : ''}`} />
                       </button>
                     )}
-                    {!showAddForm && (
+                    {canUseCustomDomain && !showAddForm && (
                       <button
                         onClick={() => setShowAddForm(true)}
                         className="text-[#5A318F] hover:text-[#4A2875] flex items-center gap-1 text-sm font-medium"
@@ -505,8 +676,28 @@ export default function SiteSettings() {
                   </div>
                 </div>
 
-                {/* Add Domain Options */}
-                {showAddForm && !domainOption && (
+                {/* Upgrade prompt for non-Pro users */}
+                {!canUseCustomDomain && (
+                  <div className="p-6 bg-gradient-to-br from-purple-50 to-pink-50 rounded-lg border border-purple-100 text-center">
+                    <Lock className="w-10 h-10 text-[#5A318F] mx-auto mb-3" />
+                    <h3 className="font-semibold text-slate-900 mb-2">Custom Domains require a Pro plan</h3>
+                    <p className="text-sm text-slate-600 mb-4">
+                      Upgrade to Pro to connect your own domain like <strong>yourbrand.com</strong>
+                    </p>
+                    <div className="flex justify-center gap-3">
+                      <button
+                        onClick={() => handleUpgrade('annual')}
+                        disabled={upgradeLoading}
+                        className="bg-gradient-to-r from-[#5A318F] to-[#D920B7] hover:from-[#4A2875] hover:to-[#C01AA3] text-white px-6 py-2.5 rounded-lg transition-all disabled:opacity-50"
+                      >
+                        {upgradeLoading ? 'Loading...' : 'Upgrade to Pro - €9.99/mo'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Add Domain Options - only show for Pro users */}
+                {canUseCustomDomain && showAddForm && !domainOption && (
                   <div className="mb-6 p-4 bg-slate-50 rounded-lg space-y-3">
                     <p className="text-sm font-medium text-slate-700 mb-4">How would you like to add a domain?</p>
 
@@ -559,7 +750,7 @@ export default function SiteSettings() {
                 )}
 
                 {/* Register Own Domain Form */}
-                {showAddForm && domainOption === 'register' && (
+                {canUseCustomDomain && showAddForm && domainOption === 'register' && (
                   <form onSubmit={handleAddDomain} className="space-y-4 mb-6 p-4 bg-slate-50 rounded-lg">
                     <div className="flex items-center gap-2 mb-2">
                       <button
@@ -606,7 +797,7 @@ export default function SiteSettings() {
                 )}
 
                 {/* Buy Domain Section */}
-                {showAddForm && domainOption === 'buy' && (
+                {canUseCustomDomain && showAddForm && domainOption === 'buy' && (
                   <div className="mb-6 p-4 bg-slate-50 rounded-lg">
                     <div className="flex items-center gap-2 mb-4">
                       <button
@@ -632,7 +823,7 @@ export default function SiteSettings() {
                 )}
 
                 {/* Transfer Domain Section */}
-                {showAddForm && domainOption === 'transfer' && (
+                {canUseCustomDomain && showAddForm && domainOption === 'transfer' && (
                   <div className="mb-6 p-4 bg-slate-50 rounded-lg">
                     <div className="flex items-center gap-2 mb-4">
                       <button
@@ -677,8 +868,8 @@ export default function SiteSettings() {
                   </div>
                 )}
 
-                {/* No domains message */}
-                {domains.length === 0 && !showAddForm && (
+                {/* No domains message - only show for Pro users */}
+                {canUseCustomDomain && domains.length === 0 && !showAddForm && (
                   <div className="text-center py-8 text-slate-500">
                     <Globe className="w-12 h-12 mx-auto mb-3 text-slate-300" />
                     <p>No custom domains configured</p>
