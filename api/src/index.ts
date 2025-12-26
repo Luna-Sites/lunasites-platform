@@ -5,6 +5,8 @@ import { config } from './config/index.js';
 import sitesRouter from './routes/sites.js';
 import templatesRouter from './routes/templates.js';
 import domainsRouter from './routes/domains.js';
+import billingRouter from './routes/billing.js';
+import webhooksRouter from './routes/webhooks.js';
 import { initTemplatesTable, initMasterSitesTable, initCustomDomainsTable } from './services/masterDb.js';
 import { authMiddleware, AuthenticatedRequest } from './middleware/auth.js';
 
@@ -22,6 +24,10 @@ app.use(
     credentials: true,
   })
 );
+
+// Stripe webhook needs raw body - must be before express.json()
+app.use('/webhooks/stripe', express.raw({ type: 'application/json' }));
+
 app.use(express.json());
 
 // Health check
@@ -52,6 +58,8 @@ app.get('/me', authMiddleware, async (req: AuthenticatedRequest, res: express.Re
 app.use('/sites', sitesRouter);
 app.use('/templates', templatesRouter);
 app.use('/domains', domainsRouter);
+app.use('/billing', billingRouter);
+app.use('/webhooks', webhooksRouter);
 
 // Error handler
 app.use(

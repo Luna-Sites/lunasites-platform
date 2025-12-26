@@ -442,6 +442,159 @@ export const api = {
   }> {
     return apiRequest('/domains/status');
   },
+
+  // ============================================
+  // BILLING & SUBSCRIPTIONS
+  // ============================================
+
+  // Get available subscription plans (no auth required)
+  async getPlans(): Promise<{
+    trial: {
+      days: number;
+      description: string;
+      customDomain: boolean;
+    };
+    plans: Array<{
+      id: string;
+      name: string;
+      price: number;
+      pricePerMonth?: number;
+      currency: string;
+      interval: string;
+      intervalCount: number;
+      description: string;
+      savings?: string;
+      customDomain: boolean;
+      features: string[];
+    }>;
+    storage: {
+      free: number;
+      pricePerUnit: number;
+      unitSize: number;
+      currency: string;
+    };
+  }> {
+    const response = await fetch(`${API_BASE_URL}/billing/plans`);
+    if (!response.ok) throw new Error('Failed to fetch plans');
+    return response.json();
+  },
+
+  // Create subscription checkout session
+  async createSubscriptionCheckout(data: {
+    siteId: string;
+    plan: 'starter' | 'monthly' | 'annual' | 'biennial';
+    successUrl?: string;
+    cancelUrl?: string;
+    withTrial?: boolean;
+  }): Promise<{
+    sessionId: string;
+    url: string;
+  }> {
+    return apiRequest('/billing/checkout/subscription', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Create domain purchase checkout session
+  async createDomainCheckout(data: {
+    domain: string;
+    years: number;
+    contact: {
+      firstName: string;
+      lastName: string;
+      address1: string;
+      city: string;
+      stateProvince: string;
+      postalCode: string;
+      country: string;
+      phone: string;
+      email: string;
+    };
+    successUrl?: string;
+    cancelUrl?: string;
+  }): Promise<{
+    sessionId: string;
+    url: string;
+    estimatedPrice: {
+      namecheapUsd: number;
+      finalEur: number;
+    };
+  }> {
+    return apiRequest('/billing/checkout/domain', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Get customer portal URL for managing subscriptions
+  async getBillingPortalUrl(returnUrl?: string): Promise<{ url: string }> {
+    const params = returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl)}` : '';
+    return apiRequest(`/billing/portal${params}`);
+  },
+
+  // Get all subscriptions for the current user
+  async getSubscriptions(): Promise<{
+    subscriptions: Array<{
+      id: string;
+      siteId: string;
+      plan: 'free' | 'starter' | 'pro' | 'enterprise';
+      status: 'active' | 'cancelled' | 'past_due' | 'trialing';
+      subscriptionId?: string;
+      currentPeriodStart?: string;
+      currentPeriodEnd?: string;
+      trialEnd?: string;
+    }>;
+  }> {
+    return apiRequest('/billing/subscriptions');
+  },
+
+  // Cancel subscription for a site
+  async cancelSubscription(siteId: string): Promise<{ success: boolean; message: string }> {
+    return apiRequest(`/billing/cancel/${siteId}`, {
+      method: 'POST',
+    });
+  },
+
+  // Get storage usage for a site
+  async getUsage(siteId: string): Promise<{
+    usage: Array<{
+      month: string;
+      storage: number;
+      pageViews: number;
+      bandwidth: number;
+    }>;
+    currentStorage: number;
+    freeStorageMb: number;
+    billableStorageMb: number;
+    estimatedCharge: number;
+    currency: string;
+  }> {
+    return apiRequest(`/billing/usage/${siteId}`);
+  },
+
+  // Get billing status for current user
+  async getBillingStatus(): Promise<{
+    hasStripeAccount: boolean;
+    paymentMethods: Array<{
+      id: string;
+      type: string;
+      last4: string;
+      brand: string;
+      isDefault: boolean;
+    }>;
+    billingAddress: {
+      name: string;
+      line1: string;
+      line2?: string;
+      city: string;
+      state: string;
+      postalCode: string;
+      country: string;
+    } | null;
+  }> {
+    return apiRequest('/billing/status');
+  },
 };
 
 // Error handling helper

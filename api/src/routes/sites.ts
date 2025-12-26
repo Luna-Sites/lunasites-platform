@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import pg from 'pg';
+import admin from 'firebase-admin';
 import { AuthenticatedRequest, authMiddleware } from '../middleware/auth.js';
 import * as sitesService from '../services/sites.js';
 import * as renderService from '../services/render.js';
@@ -8,6 +9,7 @@ import * as databaseService from '../services/database.js';
 import * as masterDbService from '../services/masterDb.js';
 import * as siteBootstrap from '../services/siteBootstrap.js';
 import * as namecheap from '../services/namecheap.js';
+import * as stripeService from '../services/stripe.js';
 import { config } from '../config/index.js';
 import { generateScreenshotUrl } from '../utils/screenshot.js';
 
@@ -437,6 +439,34 @@ router.post(
       }
       if (site.userId !== userId) {
         return res.status(403).json({ error: 'Access denied' });
+      }
+
+      // Check if site has a plan that allows custom domains
+      const db = admin.firestore();
+      const siteBillingDoc = await db
+        .collection('siteBilling')
+        .where('siteId', '==', siteId)
+        .limit(1)
+        .get();
+
+      if (!siteBillingDoc.empty) {
+        const siteBilling = siteBillingDoc.docs[0].data();
+        const plan = siteBilling.plan || 'free';
+
+        if (!stripeService.planAllowsCustomDomain(plan)) {
+          return res.status(403).json({
+            error: 'Custom domains require a Pro plan',
+            currentPlan: plan,
+            upgradeRequired: true,
+          });
+        }
+      } else {
+        // No billing record = trial or free, custom domain not allowed
+        return res.status(403).json({
+          error: 'Custom domains require a Pro plan. Please upgrade to add a custom domain.',
+          currentPlan: 'trial',
+          upgradeRequired: true,
+        });
       }
 
       // Check if this specific domain is already taken by another site

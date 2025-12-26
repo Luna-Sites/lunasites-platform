@@ -64,4 +64,21 @@ export const config = {
     clientIp: process.env.NAMECHEAP_CLIENT_IP || '',
     sandbox: process.env.NAMECHEAP_SANDBOX === 'true',
   },
+
+  // Stripe for payments and subscriptions
+  stripe: {
+    secretKey: process.env.STRIPE_SECRET_KEY || '',
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
+    prices: {
+      starter: process.env.STRIPE_PRICE_STARTER || '',
+      monthly: process.env.STRIPE_PRICE_MONTHLY || '',
+      annual: process.env.STRIPE_PRICE_ANNUAL || '',
+      biennial: process.env.STRIPE_PRICE_BIENNIAL || '',
+      storage500mb: process.env.STRIPE_PRICE_STORAGE || '',
+    },
+    // Domain markup (e.g., 0.20 for 20% markup on Namecheap prices)
+    domainMarkup: parseFloat(process.env.STRIPE_DOMAIN_MARKUP || '0.20'),
+    // Trial period in days
+    trialDays: 29,
+  },
 };
