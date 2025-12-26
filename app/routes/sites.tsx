@@ -94,7 +94,19 @@ export default function Sites() {
 
   const loadSites = async () => {
     try {
-      const sites = await api.getUserSites();
+      const [sites, subscriptionsData] = await Promise.all([
+        api.getUserSites(),
+        api.getSubscriptions(),
+      ]);
+
+      // Create a map of siteId -> billing info
+      const billingMap = new Map<string, any>();
+      if (subscriptionsData?.subscriptions) {
+        subscriptionsData.subscriptions.forEach((sub: any) => {
+          billingMap.set(sub.siteId, sub);
+        });
+      }
+
       if (sites && sites.length > 0) {
         // Fetch custom domains for each site in parallel
         const sitesWithDomains = await Promise.all(
@@ -113,6 +125,28 @@ export default function Sites() {
 
             const primaryDomain = site.domain || `${site.siteId}.luna-sites.com`;
 
+            // Get billing info for this site
+            const billing = billingMap.get(site.siteId);
+            const createdAt = new Date(site.createdAt);
+            const now = new Date();
+
+            // Calculate trial info (29 days from creation)
+            const trialEndDate = new Date(createdAt);
+            trialEndDate.setDate(trialEndDate.getDate() + 29);
+            const trialDaysLeft = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            const trialExpired = trialDaysLeft <= 0;
+
+            // Determine plan and billing status
+            const plan = billing?.plan || 'free';
+            const billingStatus = billing?.status || (trialExpired ? 'expired' : 'trial');
+            const nextBillingDate = billing?.currentPeriodEnd
+              ? new Date(billing.currentPeriodEnd).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })
+              : null;
+
             return {
               id: site.id || index + 1,
               siteId: site.siteId,
@@ -120,16 +154,21 @@ export default function Sites() {
               url: primaryDomain,
               customDomains: customDomains.filter((d: string) => d !== primaryDomain),
               thumbnail: site.screenshotUrl || null,
-              createdDate: new Date(site.createdAt).toLocaleDateString('en-US', {
+              createdDate: createdAt.toLocaleDateString('en-US', {
                 month: 'short',
                 day: 'numeric',
                 year: 'numeric',
               }),
               lastEdited: 'Recently',
-              expiryDate: 'Dec 26, 2025',
               status: site.status === 'active' ? 'Published' : 'Draft',
               views: '0',
               template: 'Custom',
+              // Billing info
+              plan,
+              billingStatus,
+              trialDaysLeft: trialExpired ? 0 : trialDaysLeft,
+              trialExpired,
+              nextBillingDate,
             };
           })
         );
@@ -209,10 +248,13 @@ export default function Sites() {
     thumbnail: '/images/nebula-1.png',
     createdDate: '-',
     lastEdited: '-',
-    expiryDate: '-',
     status: 'Not Created',
     views: '-',
     template: '-',
+    plan: null,
+    trialExpired: false,
+    trialDaysLeft: 0,
+    nextBillingDate: null,
   };
 
   const sitesToDisplay =
@@ -447,6 +489,31 @@ export default function Sites() {
                           )}
                         </div>
 
+                        {/* Plan Badge */}
+                        {!isPlaceholder && (
+                          <div className="mb-4">
+                            <span
+                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                site.plan === 'pro'
+                                  ? 'bg-purple-100 text-purple-800'
+                                  : site.plan === 'starter'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : site.trialExpired
+                                      ? 'bg-red-100 text-red-800'
+                                      : 'bg-green-100 text-green-800'
+                              }`}
+                            >
+                              {site.plan === 'pro'
+                                ? 'Pro'
+                                : site.plan === 'starter'
+                                  ? 'Starter'
+                                  : site.trialExpired
+                                    ? 'Trial Expired'
+                                    : 'Free Trial'}
+                            </span>
+                          </div>
+                        )}
+
                         {/* Details Grid */}
                         <div className="space-y-4">
                           <div className="grid grid-cols-2 gap-4">
@@ -495,12 +562,28 @@ export default function Sites() {
                             </div>
                             <div>
                               <p className="text-xs text-slate-500 mb-1 font-medium">
-                                Trial Expires
+                                {site.plan === 'free' || !site.plan
+                                  ? site.trialExpired
+                                    ? 'Trial Status'
+                                    : 'Trial Ends'
+                                  : 'Next Billing'}
                               </p>
                               <p
-                                className={`text-sm ${isPlaceholder ? 'text-slate-400' : 'text-slate-900'}`}
+                                className={`text-sm ${
+                                  isPlaceholder
+                                    ? 'text-slate-400'
+                                    : site.trialExpired && site.plan === 'free'
+                                      ? 'text-red-600 font-medium'
+                                      : 'text-slate-900'
+                                }`}
                               >
-                                {site.expiryDate}
+                                {isPlaceholder
+                                  ? '-'
+                                  : site.plan === 'free' || !site.plan
+                                    ? site.trialExpired
+                                      ? 'Expired'
+                                      : `${site.trialDaysLeft} days left`
+                                    : site.nextBillingDate || '-'}
                               </p>
                             </div>
                           </div>
