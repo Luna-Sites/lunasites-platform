@@ -182,6 +182,13 @@ export const api = {
     });
   },
 
+  // Touch site (update updatedAt timestamp)
+  async touchSite(siteId: string): Promise<{ success: boolean }> {
+    return apiRequest(`/sites/${siteId}/touch`, {
+      method: 'POST',
+    });
+  },
+
   // Health check
   async healthCheck(): Promise<{ status: string }> {
     return apiRequest<{ status: string }>('/health');

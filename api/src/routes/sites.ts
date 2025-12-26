@@ -950,6 +950,35 @@ router.delete(
   }
 );
 
+// Touch site (update updatedAt timestamp)
+router.post(
+  '/:siteId/touch',
+  authMiddleware,
+  async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { siteId } = req.params;
+      const userId = req.user!.uid;
+
+      // Verify site ownership
+      const site = await sitesService.getSiteBySiteId(siteId);
+      if (!site) {
+        return res.status(404).json({ error: 'Site not found' });
+      }
+      if (site.userId !== userId) {
+        return res.status(403).json({ error: 'Access denied' });
+      }
+
+      // Update the updatedAt timestamp
+      await sitesService.updateSite(site.id, {});
+
+      return res.json({ success: true });
+    } catch (error) {
+      console.error('Touch site error:', error);
+      return res.status(500).json({ error: 'Failed to touch site' });
+    }
+  }
+);
+
 // Update site theme
 router.patch(
   '/:siteId/theme',
@@ -1032,6 +1061,9 @@ router.patch(
           "SELECT data FROM controlpanel WHERE id = 'site'"
         );
         console.log(`Verify controlpanel data for ${siteId}:`, JSON.stringify(verifyResult.rows[0]?.data, null, 2));
+
+        // Update the site's updatedAt timestamp in Firestore
+        await sitesService.updateSite(site.id, {});
 
         return res.json({ success: true, message: 'Theme updated' });
       } finally {

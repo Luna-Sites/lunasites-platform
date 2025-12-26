@@ -205,7 +205,14 @@ export default function Sites() {
     window.location.href = '/';
   };
 
-  const handleEditSite = (siteId: string) => {
+  const handleEditSite = async (siteId: string) => {
+    // Update the site's updatedAt timestamp
+    try {
+      await api.touchSite(siteId);
+    } catch (err) {
+      // Silently fail - don't block navigation
+      console.error('Error touching site:', err);
+    }
     navigate(`/sites/${siteId}/edit`);
   };
 
