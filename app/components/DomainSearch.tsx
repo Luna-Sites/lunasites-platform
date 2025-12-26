@@ -17,27 +17,25 @@ interface DomainSearchProps {
   showPurchaseButton?: boolean;
 }
 
-// Base prices for TLDs (approximate Namecheap prices in EUR) + €2 markup
-const TLD_PRICES: Record<string, number> = {
-  '.com': 12,
-  '.net': 14,
-  '.org': 14,
-  '.io': 35,
-  '.co': 28,
-  '.app': 16,
-  '.dev': 14,
-  '.site': 4,
-};
+interface TldPrice {
+  tld: string;
+  registerPrice: number;
+  currency: string;
+}
 
 const MARKUP = 2; // €2 service fee
 
-function getDomainPrice(domain: string, premiumPrice?: number): number {
-  if (premiumPrice && premiumPrice > 0) {
-    return premiumPrice + MARKUP;
-  }
-  const tld = '.' + domain.split('.').pop();
-  return (TLD_PRICES[tld] || 15) + MARKUP;
-}
+// Fallback prices if API fails (in USD)
+const FALLBACK_PRICES: Record<string, number> = {
+  '.com': 10,
+  '.net': 12,
+  '.org': 12,
+  '.io': 33,
+  '.co': 26,
+  '.app': 14,
+  '.dev': 12,
+  '.site': 2,
+};
 
 export function DomainSearch({ onSelectDomain, onPurchase, showPurchaseButton = true }: DomainSearchProps) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -45,9 +43,42 @@ export function DomainSearch({ onSelectDomain, onPurchase, showPurchaseButton = 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
+  const [tldPrices, setTldPrices] = useState<Record<string, number>>({});
+  const [pricesLoaded, setPricesLoaded] = useState(false);
 
   // TLDs to check
   const popularTlds = ['.com', '.net', '.org', '.io', '.co', '.app', '.dev', '.site'];
+
+  // Fetch TLD prices on mount
+  useEffect(() => {
+    async function fetchPrices() {
+      try {
+        const response = await api.getDomainPricing();
+        const prices: Record<string, number> = {};
+        response.tlds.forEach((tld: TldPrice) => {
+          prices[tld.tld] = tld.registerPrice;
+        });
+        setTldPrices(prices);
+        setPricesLoaded(true);
+      } catch (err) {
+        console.error('Failed to fetch TLD prices:', err);
+        // Use fallback prices
+        setTldPrices(FALLBACK_PRICES);
+        setPricesLoaded(true);
+      }
+    }
+    fetchPrices();
+  }, []);
+
+  // Get price for a domain (with markup)
+  const getDomainPrice = (domain: string, premiumPrice?: number): number => {
+    if (premiumPrice && premiumPrice > 0) {
+      return Math.round((premiumPrice + MARKUP) * 100) / 100;
+    }
+    const tld = '.' + domain.split('.').pop();
+    const basePrice = tldPrices[tld] || FALLBACK_PRICES[tld] || 15;
+    return Math.round((basePrice + MARKUP) * 100) / 100;
+  };
 
   // Debounced search
   const searchDomains = useCallback(async (query: string) => {
