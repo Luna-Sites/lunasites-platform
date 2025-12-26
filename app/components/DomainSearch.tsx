@@ -13,7 +13,7 @@ interface DomainResult {
 
 interface DomainSearchProps {
   onSelectDomain?: (domain: string) => void;
-  onPurchase?: (domain: string) => void;
+  onPurchase?: (domain: string, price: number) => void;
   showPurchaseButton?: boolean;
 }
 
@@ -149,8 +149,9 @@ export function DomainSearch({ onSelectDomain, onPurchase, showPurchaseButton = 
     onSelectDomain?.(domain);
   };
 
-  const handlePurchase = (domain: string) => {
-    onPurchase?.(domain);
+  const handlePurchase = (domain: string, premiumPrice?: number) => {
+    const price = getDomainPrice(domain, premiumPrice);
+    onPurchase?.(domain, price);
   };
 
   const availableDomains = results.filter(r => r.available);
@@ -218,7 +219,7 @@ export function DomainSearch({ onSelectDomain, onPurchase, showPurchaseButton = 
                         size="sm"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handlePurchase(result.domain);
+                          handlePurchase(result.domain, result.premiumPrice);
                         }}
                         className="bg-gradient-to-r from-[#5A318F] to-[#D920B7] hover:from-[#4A2875] hover:to-[#C01AA3]"
                       >

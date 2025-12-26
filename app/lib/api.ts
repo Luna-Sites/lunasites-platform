@@ -507,6 +507,7 @@ export const api = {
   async createDomainCheckout(data: {
     domain: string;
     years: number;
+    priceEur: number; // Price in EUR (already includes markup)
     contact: {
       firstName: string;
       lastName: string;
@@ -523,10 +524,7 @@ export const api = {
   }): Promise<{
     sessionId: string;
     url: string;
-    estimatedPrice: {
-      namecheapUsd: number;
-      finalEur: number;
-    };
+    finalPriceEur: number;
   }> {
     return apiRequest('/billing/checkout/domain', {
       method: 'POST',

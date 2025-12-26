@@ -177,6 +177,7 @@ export default function SiteSettings() {
   const [copied, setCopied] = useState(false);
   const [showDomainPurchase, setShowDomainPurchase] = useState(false);
   const [selectedDomain, setSelectedDomain] = useState<string | null>(null);
+  const [selectedDomainPrice, setSelectedDomainPrice] = useState<number>(0);
   const [purchaseLoading, setPurchaseLoading] = useState(false);
   const [billing, setBilling] = useState<SiteBilling | null>(null);
   const [upgradeLoading, setUpgradeLoading] = useState(false);
@@ -480,8 +481,9 @@ export default function SiteSettings() {
   };
 
   // Handle domain selection from search
-  const handleDomainSelect = (domain: string) => {
+  const handleDomainSelect = (domain: string, price: number) => {
     setSelectedDomain(domain);
+    setSelectedDomainPrice(price);
     setShowDomainPurchase(true);
   };
 
@@ -508,6 +510,7 @@ export default function SiteSettings() {
       const result = await api.createDomainCheckout({
         domain: selectedDomain,
         years: 1,
+        priceEur: selectedDomainPrice,
         contact: contactForm,
         successUrl: `${settingsUrl}?payment=success&domain=${encodeURIComponent(selectedDomain)}`,
         cancelUrl: `${settingsUrl}?payment=cancelled`,
@@ -1267,6 +1270,7 @@ export default function SiteSettings() {
               <div>
                 <h3 className="text-lg font-semibold text-slate-900">Purchase Domain</h3>
                 <p className="text-sm text-slate-600">{selectedDomain}</p>
+                <p className="text-lg font-bold text-[#5A318F] mt-1">€{selectedDomainPrice}/year</p>
               </div>
               <button
                 onClick={() => {

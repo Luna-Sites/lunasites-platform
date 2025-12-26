@@ -247,6 +247,83 @@ export async function createDomainCheckout(params: {
   };
 }
 
+/**
+ * Create a Stripe Checkout session for domain purchase with explicit price
+ */
+export async function createDomainCheckoutWithPrice(params: {
+  userId: string;
+  email: string;
+  domain: string;
+  years: number;
+  priceEur: number; // Price in EUR (already includes markup)
+  successUrl: string;
+  cancelUrl: string;
+  contact?: {
+    firstName: string;
+    lastName: string;
+    address1: string;
+    city: string;
+    stateProvince: string;
+    postalCode: string;
+    country: string;
+    phone: string;
+    email: string;
+  };
+}): Promise<{ sessionId: string; url: string; finalPriceEur: number }> {
+  const stripe = getStripe();
+
+  const customerId = await getOrCreateCustomer(params.userId, params.email);
+
+  // Convert EUR price to cents
+  const priceInCents = Math.round(params.priceEur * 100);
+
+  const session = await stripe.checkout.sessions.create({
+    customer: customerId,
+    mode: 'payment',
+    payment_method_types: ['card'],
+    line_items: [
+      {
+        price_data: {
+          currency: 'eur',
+          unit_amount: priceInCents,
+          product_data: {
+            name: `Domain Registration: ${params.domain}`,
+            description: `${params.years} year${params.years > 1 ? 's' : ''} registration`,
+          },
+        },
+        quantity: 1,
+      },
+    ],
+    metadata: {
+      type: 'domain_purchase',
+      userId: params.userId,
+      domain: params.domain,
+      years: params.years.toString(),
+      priceEur: params.priceEur.toString(),
+      // Store contact info in metadata for webhook
+      ...(params.contact && {
+        contactFirstName: params.contact.firstName,
+        contactLastName: params.contact.lastName,
+        contactAddress1: params.contact.address1,
+        contactCity: params.contact.city,
+        contactState: params.contact.stateProvince,
+        contactPostalCode: params.contact.postalCode,
+        contactCountry: params.contact.country,
+        contactPhone: params.contact.phone,
+        contactEmail: params.contact.email,
+      }),
+    },
+    success_url: params.successUrl,
+    cancel_url: params.cancelUrl,
+  });
+
+  return {
+    sessionId: session.id,
+    url: session.url!,
+    finalPriceEur: params.priceEur,
+  };
+}
+
 // ============================================
 // STORAGE METERING
 // ============================================

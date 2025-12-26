@@ -154,12 +154,16 @@ router.post(
   authMiddleware,
   async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const { domain, years, contact, successUrl, cancelUrl } = req.body;
+      const { domain, years, priceEur, contact, successUrl, cancelUrl } = req.body;
       const userId = req.user!.uid;
       const email = req.user!.email || '';
 
       if (!domain || !years) {
         return res.status(400).json({ error: 'domain and years are required' });
+      }
+
+      if (!priceEur || priceEur <= 0) {
+        return res.status(400).json({ error: 'priceEur is required and must be positive' });
       }
 
       if (years < 1 || years > 10) {
@@ -174,44 +178,26 @@ router.post(
         return res.status(503).json({ error: 'Payment service not configured' });
       }
 
-      if (!namecheap.isConfigured()) {
-        return res.status(503).json({ error: 'Domain service not configured' });
-      }
-
-      // Get pricing from Namecheap
-      const tld = '.' + domain.split('.').pop();
-      const pricing = await namecheap.getTldPricing();
-      const tldPricing = pricing.find((p) => p.tld === tld);
-
-      if (!tldPricing) {
-        return res.status(400).json({ error: 'Unable to get pricing for this TLD' });
-      }
-
-      const namecheapPrice = tldPricing.registerPrice * years;
-
       const origin = req.headers.origin || 'http://localhost:5173';
 
-      const session = await stripeService.createDomainCheckout({
+      const session = await stripeService.createDomainCheckoutWithPrice({
         userId,
         email,
         domain,
         years,
-        namecheapPrice,
+        priceEur,
         contact,
         successUrl:
           successUrl || `${origin}/domains/success?domain=${encodeURIComponent(domain)}`,
         cancelUrl: cancelUrl || `${origin}/domains`,
       });
 
-      console.log(`[Billing] Domain checkout created for ${domain}, ${years} years`);
+      console.log(`[Billing] Domain checkout created for ${domain}, ${years} years, price: €${priceEur}`);
 
       return res.json({
         sessionId: session.sessionId,
         url: session.url,
-        estimatedPrice: {
-          namecheapUsd: namecheapPrice,
-          finalEur: session.finalPriceEur,
-        },
+        finalPriceEur: session.finalPriceEur,
       });
     } catch (error) {
       console.error('Domain checkout error:', error);
