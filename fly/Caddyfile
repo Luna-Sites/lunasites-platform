@@ -6,6 +6,17 @@
     on_demand_tls {
         ask http://localhost:8081/check
     }
+
+    # Souin cache configuration
+    order cache before rewrite
+    cache {
+        ttl 86400s
+        stale 3600s
+        api {
+            basepath /cache
+            souin
+        }
+    }
 }
 
 # Health check endpoint for on-demand TLS verification
@@ -15,21 +26,54 @@
 
 # Main HTTPS handler (Fly terminates external TLS, forwards to 8080)
 :8080 {
-    # Proxy all requests to Render worker
-    reverse_proxy https://lunacms-worker.onrender.com {
-        # Set Host header so Render accepts the request
-        header_up Host lunacms-worker.onrender.com
+    # Cache API for purge (protected with token)
+    @cache_api {
+        path /cache/*
+        header Authorization "Bearer {$PURGE_SECRET}"
+    }
+    handle @cache_api {
+        cache
+    }
 
-        # Pass original host to worker for routing
-        header_up X-Original-Host {host}
-        header_up X-Forwarded-Host {host}
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-Proto {scheme}
+    # Reject unauthorized cache API requests
+    @cache_api_unauth {
+        path /cache/*
+    }
+    handle @cache_api_unauth {
+        respond "Unauthorized" 401
+    }
 
-        # TLS to upstream
-        transport http {
-            tls
-            tls_insecure_skip_verify
+    # Cache all images (@@download and @@images)
+    @images {
+        path_regexp images .*@@(images|download).*
+    }
+    handle @images {
+        cache
+        reverse_proxy https://lunacms-worker.onrender.com {
+            header_up Host lunacms-worker.onrender.com
+            header_up X-Original-Host {host}
+            header_up X-Forwarded-Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            transport http {
+                tls
+                tls_insecure_skip_verify
+            }
+        }
+    }
+
+    # All other requests - no cache
+    handle {
+        reverse_proxy https://lunacms-worker.onrender.com {
+            header_up Host lunacms-worker.onrender.com
+            header_up X-Original-Host {host}
+            header_up X-Forwarded-Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+            transport http {
+                tls
+                tls_insecure_skip_verify
+            }
         }
     }
 }

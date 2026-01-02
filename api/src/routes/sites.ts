@@ -199,6 +199,14 @@ router.delete(
         await renderService.deleteService(site.renderServiceId).catch(console.error);
       }
 
+      // Delete Fly certificate for .luna-sites.com subdomain
+      if (flyService.isConfigured()) {
+        const domain = `${siteId}.${config.baseDomain}`;
+        flyService.deleteCertificate(domain).catch((err) => {
+          console.error(`[Fly] Failed to delete certificate for ${domain}:`, err);
+        });
+      }
+
       // Drop database for this site
       await databaseService.dropDatabase(siteId).catch((err) => {
         console.error(`Failed to drop database for site ${siteId}:`, err);
@@ -297,6 +305,21 @@ async function deploySite(
       dbUser: dbInfo.user,
       dbPassword: dbInfo.password,
     });
+
+    // Register .luna-sites.com subdomain on Fly for SSL certificate
+    if (flyService.isConfigured()) {
+      try {
+        console.log(`[Fly] Registering SSL certificate for ${domain}`);
+        await flyService.addCertificate(domain);
+        console.log(`[Fly] Certificate added for ${domain}`);
+      } catch (flyError) {
+        // Don't fail site creation if Fly registration fails
+        // Certificate can be added manually later
+        console.error(`[Fly] Failed to add certificate for ${domain}:`, flyError);
+      }
+    } else {
+      console.log(`[Fly] Not configured, skipping certificate for ${domain}`);
+    }
 
     const workerUrl = process.env.MULTI_TENANT_WORKER_URL || `https://${config.baseDomain}`;
     await sitesService.updateSiteRenderInfo(docId, 'multi-tenant', workerUrl);
