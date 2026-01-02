@@ -264,7 +264,7 @@ export async function addMasterSiteCustomDomain(
   await pool.query(
     `INSERT INTO site_custom_domains (site_id, domain, active)
      VALUES ($1, $2, false)
-     ON CONFLICT (domain) DO NOTHING`,
+     ON CONFLICT (domain) DO UPDATE SET site_id = $1, active = false, verified = false`,
     [siteId, domain]
   );
 }

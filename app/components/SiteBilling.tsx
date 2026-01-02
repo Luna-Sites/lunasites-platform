@@ -12,7 +12,7 @@ const PLANS = {
   pro: {
     name: 'Pro',
     price: 29,
-    features: ['Advanced Features', '10GB Storage', '100K Monthly Views', 'Custom Domain'],
+    features: ['Advanced Features', '10GB Storage', '100K Monthly Views', 'Custom Domain with edge caching'],
     limits: { storage: 10240, pageViews: 100000 }
   },
   enterprise: {

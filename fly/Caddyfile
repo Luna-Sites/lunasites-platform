@@ -10,8 +10,16 @@
     # Souin cache configuration
     order cache before rewrite
     cache {
+        mode bypass
         ttl 86400s
         stale 3600s
+        default_cache_control public, max-age=86400
+        key {
+            disable_scheme
+        }
+        badger {
+            path /tmp/souin-cache
+        }
         api {
             basepath /cache
             souin
