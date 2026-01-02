@@ -279,6 +279,7 @@ export async function createDomainCheckoutWithPrice(params: {
 
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
+    customer_email: params.email,
     mode: 'subscription',
     payment_method_types: ['card'],
     line_items: [

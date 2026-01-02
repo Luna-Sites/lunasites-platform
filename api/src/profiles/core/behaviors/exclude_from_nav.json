@@ -14,7 +14,8 @@
       "exclude_from_nav": {
         "title:i18n": "Exclude from navigation",
         "description:i18n": "If selected, this item will not appear in the navigation tree.",
-        "type": "boolean"
+        "type": "boolean",
+        "widget": "boolean"
       }
     }
   }
