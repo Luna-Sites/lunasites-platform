@@ -5,7 +5,7 @@
   "schema": {
     "fieldsets": [
       {
-        "fields": ["subjects", "language", "relatedItems", "coverage"],
+        "fields": ["subjects", "relatedItems"],
         "id": "categorization",
         "title:i18n": "Categorization"
       }

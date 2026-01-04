@@ -5,7 +5,7 @@
   "schema": {
     "fieldsets": [
       {
-        "fields": ["rights", "source", "publisher"],
+        "fields": ["rights", "publisher"],
         "id": "ownership",
         "title:i18n": "Ownership"
       }
